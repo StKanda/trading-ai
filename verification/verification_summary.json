@@ -1,0 +1,33 @@
+{
+  "modified_lock_rejected": true,
+  "revised_pretest_rejected": true,
+  "missing_final_day_rejected": true,
+  "research_verified": {
+    "models": 12,
+    "benchmarks": 2,
+    "folds": 3,
+    "prediction_rows": 936
+  },
+  "final_verified": {
+    "models": 12,
+    "benchmarks": 2,
+    "folds": 1,
+    "prediction_rows": 936
+  },
+  "synthetic_only": true,
+  "official_model_unchanged": "RF_A",
+  "code_hashes_valid": true,
+  "ui_model_past_only": true,
+  "versions": {
+    "python": "3.12.14",
+    "numpy": "2.3.5",
+    "pandas": "2.2.3",
+    "sklearn": "1.8.0"
+  },
+  "browser_visual_test": "not_available_no_browser_engine",
+  "yahoo_live_test": "not_run",
+  "unit_tests_passed": 31,
+  "javascript_syntax": "passed node --check",
+  "html_assets_and_ids": "passed",
+  "v7_legacy_unchanged": true
+}

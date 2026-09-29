@@ -1,0 +1,10 @@
+symbol: SPY
+timeframe_minutes: 5
+timezone: America/New_York
+primary_provider: yahoo
+fallback_provider: local_csv
+fresh_tolerance_minutes: 7
+warning_tolerance_minutes: 12
+hard_stop_minutes: 20
+provider_disagreement_price_bps: 10
+provider_disagreement_volume_pct: 25

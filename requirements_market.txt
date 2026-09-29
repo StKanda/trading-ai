@@ -1,0 +1,5 @@
+-r requirements.txt
+yfinance>=0.2.54,<2
+pandas_market_calendars>=4.6,<6
+
+requests>=2.31,<3

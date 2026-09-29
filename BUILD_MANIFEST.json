@@ -1,0 +1,38 @@
+{
+  "version": "10.3.0",
+  "status": "DEVELOPMENT ONLY",
+  "build_note": "Dashboard control-plane patch; no broker execution and no claim of trading edge.",
+  "tests": {"passed": 53, "failed": 0},
+  "dashboard_runtime_verified": false,
+  "dashboard_note": "app.py compiled and chart logic tested. Streamlit itself was not installed in the build container, so the HTTP dashboard server was not started here.",
+  "dl_smoke_verified": true,
+  "dl_smoke_note": "TCN configurable training smoke completed successfully on demo NVDA data.",
+  "key_files": [
+    "app.py",
+    "main.py",
+    "V10_3_README.md",
+    "trading_lab/ui/charting.py",
+    "trading_lab/ui/jobs.py",
+    "trading_lab/ui/job_runner.py",
+    "trading_lab/v10_commands.py",
+    "trading_lab/cli.py",
+    "tests/test_v103.py"
+  ],
+  "changes": [
+    "Mouse-wheel zoom disabled on Plotly market chart.",
+    "Causal support/resistance levels emphasized and heuristic probable zones added with touch counts.",
+    "Trade overlays can select any model ledger instead of only the current Champion.",
+    "Backtests can be configured and launched from the Streamlit interface.",
+    "Backtest job status, logs, metrics and equity curves refresh in the interface.",
+    "Deep Learning MLP/TCN runs can be configured and launched from the interface.",
+    "DL architecture, context, max epochs, patience and seed are configurable.",
+    "Yahoo jobs use frozen local snapshots for reproducibility.",
+    "Background UI job runner supports status logs and stop requests."
+  ],
+  "known_limitations": [
+    "research_worker.py remains the bounded smoke-test worker and is not yet a real autonomous strategy-discovery engine.",
+    "Deep Learning is not yet included as a challenger in the economic walk-forward selection table.",
+    "Yahoo latency is not guaranteed and direct mode remains polling, not tick-by-tick streaming.",
+    "Champion validation remains separate per symbol and timeframe; changing symbol is not automatic validation."
+  ]
+}

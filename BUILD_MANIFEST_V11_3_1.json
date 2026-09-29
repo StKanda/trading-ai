@@ -1,0 +1,16 @@
+{
+  "version": "11.3.1-terminal",
+  "status": "DEVELOPMENT ONLY",
+  "focus": "candidate setups -> DL ranking -> validation backtest -> OOS backtest",
+  "key_changes": [
+    "causal candidate setup filter before DL ranking",
+    "candidate-only utility DL training/validation/test rows",
+    "threshold selected by the exact economic simulator on inner validation",
+    "validation constraints on PnL, expectancy, drawdown and trades/session",
+    "NO_TRADE fallback when no validation threshold survives",
+    "candidate setup audit CSVs"
+  ],
+  "tests": {"passed": 65, "failed": 0},
+  "smoke": "full local SPY pipeline completed with MLP_12; five folds exercised NO_TRADE fallback",
+  "automatic_promotion": false
+}

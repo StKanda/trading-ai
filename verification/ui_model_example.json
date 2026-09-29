@@ -1,0 +1,17 @@
+{
+  "model": "RF_A",
+  "score": 0.36595189831717023,
+  "calibrated": false,
+  "target": "Rendement net théorique à 30 min > 0, entrée à l'ouverture suivante",
+  "note": "Score du modèle non calibré ; aucune probabilité de trade gagnant validée.",
+  "audit": {
+    "train_rows": 2484,
+    "train_last": "2026-09-24T19:20:00+00:00",
+    "train_label_end_max": "2026-09-24T19:50:00+00:00",
+    "prediction_boundary": "2026-09-25T13:30:00+00:00",
+    "gap_bars": 8,
+    "required_gap_bars": 8,
+    "leakage_check": true
+  },
+  "synthetic": true
+}

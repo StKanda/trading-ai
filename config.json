@@ -1,0 +1,30 @@
+{
+  "symbols": ["SPY", "QQQ", "AAPL", "MSFT", "NVDA", "TSLA"],
+  "calendar": "NYSE",
+  "currency": "USD",
+  "risk": {
+    "initial_capital": 10000.0,
+    "max_leverage": 1.0,
+    "risk_per_trade": 0.0025,
+    "daily_loss_limit": 0.01,
+    "fee_bps": 2.0,
+    "slippage_bps": 3.0,
+    "borrowing_bps_per_day": 2.0,
+    "stop_atr": 1.5,
+    "min_stop_pct": 0.0015,
+    "reward_risk": 2.0,
+    "max_volume_fraction": 0.005
+  },
+  "research": {
+    "horizon_minutes": 30,
+    "threshold": 0.55,
+    "train_sessions": 15,
+    "fold_sessions": 5,
+    "min_train_rows": 350,
+    "extra_embargo_bars": 1,
+    "rf_trees": 120,
+    "gb_iterations": 100,
+    "seed": 42,
+    "jobs": 4
+  }
+}

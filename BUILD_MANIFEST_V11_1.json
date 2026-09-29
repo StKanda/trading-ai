@@ -1,0 +1,29 @@
+{
+  "version": "11.1-terminal",
+  "focus": "multi-task utility deep learning + economic walk-forward",
+  "tested": {
+    "unit_tests": 60,
+    "unit_tests_failed": 0,
+    "smoke_pipeline": "SPY local snapshot, 5m, utility MLP_12, 3 folds, economic backtest completed"
+  },
+  "features": [
+    "terminal-only workflow preserved",
+    "multi-task utility targets: target-before-stop 15/30/60, MFE/MAE 30, net returns 15/30/60",
+    "utility MLP and causal TCN heads",
+    "60-minute purge for utility objective",
+    "train-only feature scaling and train-only regression target normalization",
+    "multi-seed averaging",
+    "same t+1 execution and stop-priority backtester",
+    "cost stress +2/+5 bps",
+    "trade concentration diagnostics",
+    "utility OOS labels/predictions and target statistics",
+    "manual review only; no automatic promotion"
+  ],
+  "limitations": [
+    "DEVELOPMENT ONLY",
+    "scores are not calibrated probabilities",
+    "target-before-stop can be highly imbalanced",
+    "small datasets are insufficient for reliable edge claims",
+    "no broker connectivity or real orders"
+  ]
+}

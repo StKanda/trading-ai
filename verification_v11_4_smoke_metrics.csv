@@ -1,0 +1,2 @@
+model,rows,profitable_rate,rank_auc,average_precision,pnl_spearman,predicted_pnl_mean,realized_pnl_mean,top_decile_rows,top_decile_profitable_rate,top_decile_realized_pnl_mean,note
+MLP_12,236,0.4872881355932203,0.41293568091987065,0.44910282145826685,-0.09656132598702678,-2.623533741397373,-0.7042914378069642,24,0.4583333333333333,-1.1444828290978724,"ExpectedTradeValue = PnL prédit; score monotone, pas une probabilité calibrée"

@@ -1,0 +1,4 @@
+
+# V11.3.1 verification
+68 unit/integration tests passed.
+Smoke pipeline: SPY local demo, utility MLP_12, 5 folds, completed successfully.

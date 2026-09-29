@@ -1,0 +1,5 @@
+V11.3.2 smoke
+SPY local verification/data_demo
+39 sessions, 3042 bars, 5 folds
+MLP_12, seed 42, 1 epoch
+Pipeline completed. New outputs verified: dl_threshold_grid.csv, dl_raw_oos_metrics.csv, candidate_oracle_diagnostic.csv, candidate_oracle_summary.csv, CANDIDATE_ALL metrics.

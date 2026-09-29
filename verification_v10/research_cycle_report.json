@@ -1,0 +1,48 @@
+{
+  "results": [
+    {
+      "experiment_id": "d37d9b78da81f5fbab2de99c04245ec125a07782cadfd0752e519569f3892127",
+      "status": "COMPLETED",
+      "decision": "REJECTED",
+      "metrics": {
+        "trades": 0,
+        "expectancy": 0.0
+      },
+      "robustness": {
+        "passes": false,
+        "reason": "SMOKE TEST ONLY"
+      }
+    },
+    {
+      "experiment_id": "4c54e1df555ae500e16c876cdb77a23918abe645c455e15806e110b3ab9e705b",
+      "status": "COMPLETED",
+      "decision": "REJECTED",
+      "metrics": {
+        "trades": 0,
+        "expectancy": 0.0
+      },
+      "robustness": {
+        "passes": false,
+        "reason": "SMOKE TEST ONLY"
+      }
+    },
+    {
+      "experiment_id": "362fd97ac54a9a838ffbfad7eb991df9337ce021f97fcca79b0d11ba4c11af10",
+      "status": "COMPLETED",
+      "decision": "REJECTED",
+      "metrics": {
+        "trades": 0,
+        "expectancy": 0.0
+      },
+      "robustness": {
+        "passes": false,
+        "reason": "SMOKE TEST ONLY"
+      }
+    }
+  ],
+  "stop_reason": "no_robust_improvement_limit",
+  "experiments_this_cycle": 3,
+  "experiments_total": 3,
+  "status": "DEVELOPMENT ONLY",
+  "manual_promotion": true
+}

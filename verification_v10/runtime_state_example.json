@@ -1,0 +1,41 @@
+{
+  "decision": "NO TRADE",
+  "reason": "rule below threshold",
+  "champion": "RULE_MOMENTUM",
+  "market_timestamp": "2026-09-25T20:00:00+00:00",
+  "generated_at": "2026-09-27T17:18:36.905754+00:00",
+  "price": 771.299987793,
+  "entry_estimate": 771.5313777893379,
+  "stop": 770.3740807226538,
+  "target": 773.8459719227058,
+  "model_score": 0.0,
+  "score_is_calibrated_probability": false,
+  "freshness": {
+    "status": "FRESH",
+    "expected_complete_bar": "2026-09-25T20:00:00+00:00",
+    "last_market_bar": "2026-09-25T20:00:00+00:00",
+    "data_age_seconds": 0.0,
+    "lag_seconds": 0.0,
+    "lag_bars": 0,
+    "usable_for_signal": true,
+    "reason": "Data within freshness tolerance."
+  },
+  "sizing": {
+    "quantity": 12,
+    "equity": 10000.0,
+    "risk_budget": 25.0,
+    "risk_per_unit": 2.03615547928771,
+    "quantity_by_risk": 12,
+    "quantity_by_leverage": 12,
+    "quantity_by_volume": 11282,
+    "notional": 9258.376533472054,
+    "planned_risk": 24.43386575145252,
+    "planned_risk_pct": 0.002443386575145252,
+    "daily_risk_remaining": 100.0,
+    "status": "OK",
+    "reason": "Risk, leverage and liquidity constraints satisfied"
+  },
+  "data_provider": "Yahoo / yfinance",
+  "live_worker_status": "ON",
+  "research_worker_status": "UNKNOWN"
+}

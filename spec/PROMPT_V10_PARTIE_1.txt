@@ -1,0 +1,803 @@
+# TRADING AI V10 — PROMPT MAÎTRE  
+## PARTIE 1/4 — PRINCIPES, AUDIT, DONNÉES, BACKTEST ET DEEP LEARNING
+
+Je reprends mon projet local de recherche boursière SPY intraday.
+
+Je vais te fournir l’archive ZIP de ma V9 actuelle.
+
+Tu dois construire une V10 à partir de cette archive.
+
+---
+
+# 1. RÈGLES DE TRAVAIL
+
+IMPORTANT :
+
+- Tu n’as pas accès directement à mon PC.
+- Travaille uniquement sur les fichiers que je joins dans cette conversation.
+- Inspecte réellement l’archive avant toute modification.
+- Ne prétends jamais avoir modifié directement un dossier présent sur mon ordinateur.
+- À la fin, rends-moi un nouveau ZIP complet, prêt à extraire et à lancer localement.
+- Ne colle pas des milliers de lignes de code dans le chat.
+- Travaille directement sur les fichiers dans ton environnement.
+- Réponds de manière concise avec :
+  - ce qui a été fait ;
+  - les tests ;
+  - les résultats ;
+  - les limites ;
+  - les commandes utiles ;
+  - le lien vers le ZIP.
+
+Si une fonctionnalité ne fonctionne pas correctement, indique-le clairement.
+
+Ne fabrique jamais un résultat positif.
+
+Je préfère un résultat négatif mais fiable à un résultat spectaculaire obtenu par surapprentissage.
+
+Priorités absolues :
+
+CAUSALITÉ  
+> ROBUSTESSE  
+> REPRODUCTIBILITÉ  
+> SIMPLICITÉ  
+> PERFORMANCE HISTORIQUE
+
+---
+
+# 2. OBJECTIF GÉNÉRAL
+
+Créer une V10 propre, robuste, modulaire, explicable et extensible à partir de V9.
+
+Conserver tout ce qui fonctionne déjà dans V9.
+
+Ajouter progressivement :
+
+1. Deep Learning expérimental ;
+2. moteur de recherche automatique borné ;
+3. système Champion / Challenger ;
+4. moteur de validation indépendant ;
+5. worker local d’inférence ;
+6. worker local de recherche ;
+7. interface locale simple ;
+8. registre de toutes les expériences ;
+9. détection de dérive des données et modèles ;
+10. position sizing ;
+11. gestion sérieuse de la fraîcheur des données ;
+12. support de plusieurs fournisseurs de données ;
+13. mode replay ;
+14. shadow mode ;
+15. système capable de choisir NO TRADE ou CASH.
+
+Le projet reste exclusivement un outil de :
+
+- recherche ;
+- backtest ;
+- paper analysis ;
+- génération de signaux théoriques ;
+- observation prospective.
+
+INTERDICTIONS :
+
+- aucune connexion d’exécution à un courtier ;
+- aucun ordre réel ;
+- aucun achat ou vente réel ;
+- aucune clé API de broker nécessaire à l’exécution ;
+- aucune fonctionnalité d’auto-trading ;
+- aucun contournement de ces règles.
+
+Une API peut éventuellement être utilisée uniquement comme fournisseur de données de marché si cela est explicitement configuré.
+
+---
+
+# 3. AUDIT COMPLET DE V9
+
+Avant de créer V10 :
+
+1. extraire V9 ;
+2. inspecter toute sa structure ;
+3. identifier les fichiers importants ;
+4. comprendre réellement son pipeline ;
+5. exécuter ses tests.
+
+Faire un inventaire concis de :
+
+- architecture ;
+- modules ;
+- données ;
+- calendrier ;
+- agrégation ;
+- features ;
+- labels ;
+- modèles ;
+- règles de trading ;
+- Random Forest ;
+- Gradient Boosting ;
+- Logistic Regression si présente ;
+- patterns W/M ;
+- Momentum ;
+- VWAP ;
+- Opening Range ;
+- walk-forward ;
+- purge ;
+- embargo ;
+- backtester ;
+- stops ;
+- targets ;
+- frais ;
+- slippage ;
+- limite journalière ;
+- position sizing existant ;
+- ablations ;
+- stress tests ;
+- métriques ;
+- graphiques ;
+- interface ;
+- tests ;
+- fichiers de résultats.
+
+Identifier également :
+
+- code mort ;
+- duplication ;
+- erreurs potentielles ;
+- incohérences ;
+- dette technique ;
+- risques de fuite de données.
+
+Ne supprimer aucune fonctionnalité V9 valide simplement pour simplifier V10.
+
+Créer V10 dans un dossier séparé.
+
+V5/V6/V7/V8/V9 doivent rester conceptuellement conservées et reproductibles.
+
+---
+
+# 4. DATA AUDIT OBLIGATOIRE
+
+Avant toute expérience, lancer un contrôle complet des données.
+
+Vérifier :
+
+- timestamps ;
+- timezone ;
+- ordre chronologique ;
+- dates dupliquées ;
+- bougies dupliquées ;
+- valeurs manquantes ;
+- OHLC cohérent ;
+- volume cohérent ;
+- prix positifs ;
+- bougies complètes ;
+- intervalles temporels ;
+- séances ;
+- jours fériés ;
+- early close ;
+- calendrier NYSE ;
+- trous intraday ;
+- bougies hors session ;
+- sessions de calendrier sans prix ;
+- prix sans session correspondante.
+
+Règles OHLC minimales :
+
+- High >= Open ;
+- High >= Close ;
+- Low <= Open ;
+- Low <= Close ;
+- High >= Low.
+
+Ne jamais transformer une ligne de calendrier en donnée de marché.
+
+Exemple :
+
+si `sessions.csv` contient le 28 septembre mais qu’il n’existe aucune bougie SPY correspondante, cette date ne doit pas être utilisée comme observation de marché.
+
+Créer :
+
+`data_audit.json`
+
+et éventuellement :
+
+`data_audit.csv`
+
+Afficher clairement :
+
+- première bougie ;
+- dernière bougie ;
+- nombre de séances ;
+- nombre de bougies ;
+- nombre de trous ;
+- nombre de doublons ;
+- timezone ;
+- nombre de séances complètes ;
+- nombre de séances incomplètes.
+
+---
+
+# 5. VERSIONNAGE DES DONNÉES
+
+Chaque snapshot utilisé doit recevoir une identité reproductible.
+
+Enregistrer :
+
+- nom du fichier ;
+- source ;
+- symbole ;
+- timeframe ;
+- début ;
+- fin ;
+- nombre de bougies ;
+- nombre de séances ;
+- `fetched_at` si disponible ;
+- `synthetic` si disponible ;
+- SHA-256 du dataset.
+
+Créer par exemple :
+
+`dataset_manifest.json`
+
+Toute expérience doit faire référence à ce manifest.
+
+Une expérience doit pouvoir indiquer exactement :
+
+« J’ai été entraînée sur CE dataset précis. »
+
+Ne jamais mélanger silencieusement deux versions différentes d’un historique.
+
+---
+
+# 6. SPY ET TIMEFRAME
+
+Instrument principal :
+
+SPY.
+
+Timeframe principal :
+
+5 minutes.
+
+Prévoir une architecture permettant éventuellement :
+
+- 10 minutes ;
+- 15 minutes ;
+
+mais sans modifier la logique principale du 5 minutes.
+
+Pour SPY ETF :
+
+`instrument_type = ETF`
+
+`contract_multiplier = 1`
+
+La quantité correspond donc initialement à un nombre d’actions SPY.
+
+---
+
+# 7. RÈGLES DE BACKTEST NON NÉGOCIABLES
+
+Au départ :
+
+- levier = 1 ;
+- pas d’overnight ;
+- long-only si V9 fonctionne actuellement ainsi ;
+- frais réalistes ;
+- slippage réaliste ;
+- coûts réellement déduits du capital.
+
+Règle fondamentale :
+
+signal calculé à la clôture de la bougie t.
+
+Exécution :
+
+au plus tôt à l’ouverture de la bougie t+1.
+
+Interdiction de :
+
+- calculer le signal avec Close[t] ;
+- puis prétendre entrer à Close[t].
+
+Aucune position ne doit utiliser un prix impossible historiquement.
+
+---
+
+# 8. STOP / TARGET / GAP
+
+Le backtest doit gérer correctement :
+
+- stop ;
+- target ;
+- clôture forcée ;
+- gap ;
+- slippage.
+
+Si stop et target sont touchés dans la même bougie :
+
+STOP PRIORITAIRE.
+
+C’est l’hypothèse conservatrice.
+
+Si le marché ouvre au-delà du stop :
+
+utiliser le prix réellement simulable selon le modèle d’exécution.
+
+Ne jamais limiter artificiellement la perte au niveau exact du stop lorsqu’un gap le traverse.
+
+Un stop représente une intention de sortie, pas une garantie de prix.
+
+---
+
+# 9. AUCUNE POSITION OVERNIGHT
+
+Toutes les positions doivent être fermées avant ou à la fin de la séance.
+
+Le système doit connaître :
+
+- heure d’ouverture ;
+- heure de clôture ;
+- early close.
+
+Aucune position SPY intraday ne doit rester ouverte au lendemain dans ce protocole.
+
+---
+
+# 10. AUCUNE FUITE DE DONNÉES
+
+Toutes les features doivent être causales.
+
+Interdiction d’utiliser des informations futures dans :
+
+- supports ;
+- résistances ;
+- pivots ;
+- W/M ;
+- VWAP ;
+- moyenne ;
+- volume relatif ;
+- volatilité ;
+- normalisation ;
+- détection de régime ;
+- labels ;
+- sélection des modèles ;
+- stop ;
+- target.
+
+Une valeur calculée à t doit être calculable réellement à t.
+
+---
+
+# 11. PARITÉ BACKTEST / LIVE
+
+Éviter deux implémentations différentes :
+
+- une pour le backtest ;
+- une pour le live worker.
+
+Créer une seule source de vérité pour :
+
+- preprocessing ;
+- features ;
+- normalisation ;
+- règles ;
+- décisions ;
+- signal.
+
+Le même historique arrêté au même timestamp doit produire exactement les mêmes features.
+
+Ajouter des tests :
+
+`feature_parity`
+
+et :
+
+`signal_parity`
+
+Objectif :
+
+mêmes données + même instant + même modèle = même décision.
+
+---
+
+# 12. LABELS
+
+Les labels doivent être créés uniquement pour l’entraînement et l’évaluation.
+
+Ils ne doivent jamais entrer dans les features.
+
+Documenter précisément chaque label.
+
+Exemples possibles :
+
+- rendement futur 30 minutes ;
+- target avant stop ;
+- rendement futur net ;
+- multi-classe ;
+- ranking.
+
+Si les labels couvrent plusieurs bougies, prendre en compte leur chevauchement pour purge et embargo.
+
+---
+
+# 13. RESEARCH / VALIDATION / FINAL
+
+Séparer strictement les données.
+
+## TRAIN
+
+Utilisé pour entraîner.
+
+## WALK-FORWARD VALIDATION
+
+Utilisé pour :
+
+- évaluer ;
+- comparer ;
+- choisir raisonnablement les configurations.
+
+## SHADOW VALIDATION
+
+Si assez de données :
+
+zone supplémentaire de confirmation.
+
+Elle ne doit pas être utilisée pour régler chaque petite modification.
+
+## FINAL TEST
+
+Totalement verrouillé.
+
+Le Final Test ne doit jamais être utilisé pour :
+
+- modifier les features ;
+- modifier les paramètres ;
+- changer le modèle ;
+- modifier le seuil ;
+- modifier le stop ;
+- modifier le target ;
+- choisir un filtre horaire ;
+- choisir un régime ;
+- modifier la taille de position.
+
+Avant d’ouvrir le test final :
+
+écrire :
+
+`protocol_lock.json`
+
+Ce fichier doit définir tout le protocole retenu.
+
+---
+
+# 14. PÉRIODES DÉJÀ CONSULTÉES
+
+Toute période déjà examinée lors de V8, V9 ou d’une expérience V10 ne doit pas être présentée plus tard comme un test final totalement indépendant.
+
+Enregistrer les périodes consultées dans :
+
+`data_exposure_registry.json`
+
+ou dans SQLite.
+
+Pour chaque période :
+
+- date début ;
+- date fin ;
+- usage ;
+- research/final/shadow ;
+- date d’accès.
+
+Objectif :
+
+éviter de se mentir involontairement sur le caractère réellement hors échantillon.
+
+---
+
+# 15. WALK-FORWARD
+
+Utiliser des splits chronologiques.
+
+Ne pas utiliser un train/test aléatoire classique pour les données temporelles.
+
+Chaque fold doit contenir :
+
+TRAIN passé  
+→ VALIDATION future.
+
+Produire :
+
+`split_audit.csv`
+
+avec :
+
+- fold ;
+- train_start ;
+- train_end ;
+- purge_start ;
+- purge_end ;
+- embargo ;
+- validation_start ;
+- validation_end ;
+- nombre d’observations ;
+- nombre de séances.
+
+---
+
+# 16. PURGE
+
+La purge consiste à retirer certaines observations proches de la frontière train/validation lorsque leurs labels peuvent chevaucher la période future.
+
+Elle doit être calculée en fonction de l’horizon maximum des labels.
+
+Ne pas mettre une valeur arbitraire sans documentation.
+
+---
+
+# 17. EMBARGO
+
+L’embargo ajoute une séparation temporelle supplémentaire entre train et validation.
+
+Il sert à réduire les contaminations temporelles indirectes.
+
+Documenter :
+
+- valeur ;
+- unité ;
+- justification.
+
+---
+
+# 18. BASELINES À CONSERVER
+
+Conserver et comparer si disponibles :
+
+- CASH ;
+- Buy & Hold ;
+- Intraday Hold ;
+- Random Forest ;
+- Gradient Boosting ;
+- Logistic Regression ;
+- Momentum ;
+- VWAP ;
+- Opening Range / ORB ;
+- patterns W/M ;
+- autres règles V9.
+
+Les baselines simples sont importantes.
+
+Un Transformer qui fait à peine mieux qu’une règle VWAP ne doit pas être automatiquement considéré comme supérieur.
+
+---
+
+# 19. DEEP LEARNING : PRINCIPE
+
+Le Deep Learning ne doit pas remplacer les modèles V9.
+
+Il constitue un nouveau groupe de challengers.
+
+Créer :
+
+`src/deep_learning/`
+
+Tester progressivement.
+
+Priorité :
+
+1. MLP ;
+2. TCN ou CNN 1D causal ;
+3. GRU ;
+4. LSTM ;
+5. Transformer léger seulement si la quantité de données le justifie.
+
+Ne pas créer un énorme modèle.
+
+Avec très peu de données :
+
+le Deep Learning doit être considéré comme un smoke test architectural, pas comme une preuve d’edge.
+
+---
+
+# 20. QUANTITÉ MINIMALE DE DONNÉES
+
+Si le dataset reste proche des 41 séances actuelles :
+
+le système doit afficher :
+
+`DEVELOPMENT ONLY`
+
+et :
+
+`DATA INSUFFICIENT FOR RELIABLE DL CONCLUSION`
+
+Il peut :
+
+- vérifier le code ;
+- entraîner un petit modèle ;
+- tester la causalité ;
+- tester les workers ;
+- tester le dashboard.
+
+Mais ne doit pas déclarer un edge Deep Learning démontré.
+
+L’architecture V10 doit être prête à recevoir :
+
+- 1 an ;
+- 2 ans ;
+- plusieurs années ;
+
+de SPY 5 minutes.
+
+---
+
+# 21. SÉQUENCES DEEP LEARNING
+
+Les réseaux temporels doivent utiliser uniquement des bougies passées.
+
+Exemples d’horizons :
+
+12 barres  
+24 barres  
+48 barres  
+78 barres.
+
+Une séquence à t ne contient rien après t.
+
+---
+
+# 22. NORMALISATION DL
+
+Tout scaler doit être entraîné uniquement sur la partie TRAIN.
+
+Interdiction de :
+
+- fitter le scaler sur toutes les données ;
+- fitter sur le final test ;
+- utiliser moyenne/écart-type calculés avec le futur.
+
+Dans chaque fold :
+
+FIT scaler sur TRAIN.
+
+Puis :
+
+TRANSFORM validation.
+
+---
+
+# 23. REPRODUCTIBILITÉ DL
+
+Sauvegarder :
+
+- seed Python ;
+- seed NumPy ;
+- seed framework DL ;
+- architecture ;
+- paramètres ;
+- learning rate ;
+- batch size ;
+- epochs ;
+- dropout ;
+- weight decay ;
+- contexte ;
+- dataset hash ;
+- feature version.
+
+Créer des checkpoints.
+
+Pouvoir reproduire exactement un entraînement.
+
+---
+
+# 24. RÉGULARISATION
+
+Ajouter si pertinent :
+
+- Early Stopping ;
+- Dropout ;
+- Weight Decay ;
+- réduction du nombre de paramètres ;
+- validation chronologique.
+
+Ne pas utiliser automatiquement plus de complexité lorsque le modèle sous-performe.
+
+---
+
+# 25. OBJECTIFS DU DEEP LEARNING
+
+Ne pas se limiter à prédire :
+
+UP / DOWN.
+
+Étudier de manière contrôlée :
+
+- rendement futur ;
+- rendement futur net ;
+- ranking des opportunités ;
+- target avant stop ;
+- classification multi-classe ;
+- expected return.
+
+Ne pas tester toutes ces cibles en même temps.
+
+Une expérience = une hypothèse clairement définie.
+
+---
+
+# 26. SCORE ≠ PROBABILITÉ
+
+Une sortie réseau brute ne doit jamais être présentée automatiquement comme :
+
+« 72 % de chance de gagner ».
+
+Utiliser plutôt :
+
+- MODEL SCORE ;
+- SIGNAL STRENGTH ;
+- MODEL CONFIDENCE.
+
+Si une calibration est mise en place :
+
+elle doit être elle-même validée hors échantillon.
+
+---
+
+# 27. SORTIES POSSIBLES DU MOTEUR DE SIGNAL
+
+Le moteur doit pouvoir répondre :
+
+`LONG CANDIDATE`
+
+`NO TRADE`
+
+`INSUFFICIENT CONFIDENCE`
+
+Au niveau portefeuille :
+
+`CASH`
+
+Il doit être normal que la majorité des bougies donnent éventuellement :
+
+NO TRADE.
+
+Ne jamais forcer une position pour augmenter artificiellement le nombre de trades.
+
+---
+
+# 28. INFORMATIONS D’UN SIGNAL
+
+Pour chaque signal, conserver si disponibles :
+
+- symbole ;
+- timeframe ;
+- timestamp marché ;
+- timestamp de génération ;
+- prix ;
+- score ;
+- seuil ;
+- VWAP ;
+- distance VWAP ;
+- ATR ;
+- volume relatif ;
+- tendance ;
+- régime ;
+- stop ;
+- target ;
+- reward/risk ;
+- coûts estimés ;
+- taille de position ;
+- incertitude ;
+- raison du signal.
+
+La PARTIE 2 continuera avec :
+
+- Auto-Research Engine ;
+- analyse automatique des performances ;
+- génération d’hypothèses ;
+- optimisation bornée ;
+- anti-boucles infinies ;
+- Champion / Challenger ;
+- Validation Engine ;
+- fragilité ;
+- surfaces de paramètres ;
+- data snooping ;
+- registre des expériences ;
+- détection des régimes.

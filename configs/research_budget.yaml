@@ -1,0 +1,8 @@
+max_experiments_per_cycle: 20
+max_experiments_total: 500
+max_architectures_per_cycle: 3
+max_trials_per_hyperparameter: 5
+max_generations: 3
+stop_after_no_improvement: 5
+max_runtime_minutes: 120
+max_parallel_jobs: 1

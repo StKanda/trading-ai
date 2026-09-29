@@ -1,0 +1,11 @@
+initial_capital: 10000.0
+max_leverage: 1.0
+risk_per_trade_pct: 0.0025
+max_daily_loss_pct: 0.01
+max_trades_per_day: 6
+risk_buffer_pct: 0.10
+max_position_notional_pct: 1.0
+max_total_exposure_pct: 1.0
+allow_fractional_shares: false
+fee_bps: 2.0
+slippage_bps: 3.0

@@ -1,0 +1,12 @@
+{
+  "symbol": "NVDA",
+  "source": "DÉMONSTRATION SYNTHÉTIQUE",
+  "synthetic": true,
+  "bar_minutes": 5,
+  "timestamp_convention": "bar_start",
+  "currency": "USD",
+  "adjustment": "raw",
+  "fetched_at": "2026-09-25T20:00:00+00:00",
+  "delay": "replay",
+  "calendar": "synthetic_schedule"
+}

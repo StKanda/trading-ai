@@ -1,0 +1,18 @@
+{
+  "version": "11.3.2-terminal",
+  "status": "DEVELOPMENT ONLY",
+  "focus": "diagnostiquer candidate universe vs DL ranking sans assouplir artificiellement le gate",
+  "key_changes": [
+    "dl_threshold_grid.csv: audit économique de chaque seuil de validation et raison de rejet",
+    "dl_raw_oos_metrics.csv: ranking brut OOS conservé même quand le gate choisit NO_TRADE",
+    "CANDIDATE_ALL: baseline diagnostique sans ranking DL, exclue de la promotion",
+    "candidate_oracle_diagnostic.csv + summary: potentiel isolé des candidats avec future leakage explicitement marqué",
+    "logique de trading inchangée: signal close t -> entrée open t+1, no overnight"
+  ],
+  "tests": {
+    "passed": 71,
+    "failed": 0
+  },
+  "smoke": "SPY local, 39 sessions, 5 folds, MLP_12 seed 42 epoch 1; diagnostic files generated; CANDIDATE_ALL and oracle completed",
+  "automatic_promotion": false
+}

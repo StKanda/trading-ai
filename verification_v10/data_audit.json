@@ -1,0 +1,22 @@
+{
+  "status": "OK",
+  "manifest": {
+    "symbol": "SPY",
+    "source": "Yahoo / yfinance",
+    "timeframe": 5,
+    "start": "2026-07-30T09:30:00-04:00",
+    "end": "2026-09-25T15:55:00-04:00",
+    "bars": 3198,
+    "sessions_with_prices": 41,
+    "fetched_at": "2026-09-27T11:55:04.575614+00:00",
+    "synthetic": false,
+    "sha256": "c1d8c4397f6ccf33a69a7bce97b49e20b7987c6544e898cdf071c55d5432457b"
+  },
+  "completed_bars": 3198,
+  "missing_bars": 0,
+  "outside_session_rows": 0,
+  "calendar_sessions_without_prices": [
+    "2026-09-28"
+  ],
+  "statistical_status": "DEVELOPMENT ONLY"
+}

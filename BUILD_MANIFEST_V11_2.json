@@ -1,0 +1,16 @@
+{
+  "version": "11.2-terminal",
+  "status": "DEVELOPMENT ONLY",
+  "focus": "terminal-only backtesting and deep learning",
+  "key_changes": [
+    "inner chronological DL validation separated from outer OOS fold",
+    "train-only class weighting for rare target-before-stop labels",
+    "bounded validation-only threshold selection",
+    "combined setup score using target-before-stop, MFE/MAE and net returns",
+    "NO_TRADE fallback when validation utility is not positive",
+    "per-fold threshold audit in dl_threshold_selection.csv"
+  ],
+  "tests": {"passed": 63, "failed": 0},
+  "smoke": "20-session SPY utility pipeline completed with MLP_12; NO_TRADE fallback exercised",
+  "automatic_promotion": false
+}

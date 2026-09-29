@@ -1,0 +1,1309 @@
+# TRADING AI V10 — PROMPT MAÎTRE  
+## PARTIE 2/4 — AUTO-RESEARCH, CHAMPION/CHALLENGER, VALIDATION ET ANTI-OVERFITTING
+
+---
+
+# 29. AUTO-RESEARCH ENGINE
+
+Créer un moteur de recherche automatique séparé du moteur live.
+
+Créer par exemple :
+
+`src/research_engine/`
+
+avec des modules du type :
+
+- `experiment_manager.py`
+- `hypothesis_generator.py`
+- `validator.py`
+- `experiment_registry.py`
+- `champion_challenger.py`
+- `research_budget.py`
+- `robustness.py`
+
+Le moteur doit fonctionner comme un chercheur.
+
+Cycle général :
+
+OBSERVATION  
+↓  
+HYPOTHÈSE  
+↓  
+EXPÉRIENCE  
+↓  
+VALIDATION WALK-FORWARD  
+↓  
+STRESS TEST  
+↓  
+SHADOW VALIDATION si disponible  
+↓  
+ACCEPT / REJECT  
+↓  
+STOP ou nouvelle hypothèse
+
+Le moteur ne doit jamais rechercher indéfiniment une combinaison gagnante.
+
+---
+
+# 30. OBJECTIF DU RESEARCH ENGINE
+
+Le Research Engine ne doit pas chercher :
+
+« Quel réglage maximise mon backtest ? »
+
+Il doit chercher :
+
+« Existe-t-il une modification simple, reproductible et économiquement utile qui améliore réellement la performance hors échantillon ? »
+
+Une amélioration doit idéalement être :
+
+- causale ;
+- stable ;
+- reproductible ;
+- résistante aux coûts ;
+- résistante aux petites variations de paramètres ;
+- présente sur plusieurs folds ;
+- non dépendante de quelques trades ;
+- suffisamment simple.
+
+Le moteur doit considérer comme résultat valide :
+
+`NO ROBUST IMPROVEMENT FOUND`
+
+---
+
+# 31. ANALYSE AUTOMATIQUE DES RÉSULTATS
+
+Après chaque cycle, analyser les résultats en détail.
+
+Étudier notamment :
+
+- trades gagnants ;
+- trades perdants ;
+- heures d’entrée ;
+- heures de sortie ;
+- jour de semaine ;
+- volatilité ;
+- ATR ;
+- distance VWAP ;
+- volume relatif ;
+- régime ;
+- tendance ;
+- opening range ;
+- durée des positions ;
+- MAE ;
+- MFE ;
+- stops ;
+- targets ;
+- sorties EOD ;
+- coûts ;
+- slippage ;
+- score du modèle ;
+- faux positifs ;
+- faux négatifs ;
+- résultats mensuels ;
+- résultats par séance ;
+- résultats par régime.
+
+Chercher des observations telles que :
+
+- performances négatives à certaines heures ;
+- résultats concentrés sur l’ouverture ;
+- résultats concentrés sur la fin de séance ;
+- stratégie efficace uniquement en forte volatilité ;
+- mauvais résultats en faible volume ;
+- stops trop proches ;
+- targets rarement atteintes ;
+- signaux trop fréquents ;
+- signaux trop rares ;
+- scores élevés mais PnL négatif ;
+- avantage absorbé par les coûts ;
+- résultats dépendants de quelques séances ;
+- résultats dépendants de quelques trades ;
+- résultats dépendants d’un seul mois ;
+- performances instables selon la seed ;
+- modèle performant uniquement dans un régime.
+
+Produire :
+
+`research_diagnostics.json`
+
+ou équivalent.
+
+---
+
+# 32. GÉNÉRATION D’HYPOTHÈSES
+
+À partir des diagnostics, le moteur peut proposer une hypothèse.
+
+Exemples autorisés :
+
+- modifier légèrement un seuil ;
+- modifier la taille de la fenêtre de contexte ;
+- retirer une feature ;
+- ajouter une feature déjà disponible dans le projet ;
+- modifier stop/target ;
+- rendre stop/target dépendants de l’ATR ;
+- filtrer une plage horaire ;
+- filtrer un régime ;
+- modifier légèrement la régularisation ;
+- changer un horizon de label ;
+- tester une architecture proche ;
+- tester un ensemble simple ;
+- modifier un critère d’abstention.
+
+Toute hypothèse doit être enregistrée AVANT son exécution.
+
+Format recommandé :
+
+`Hypothesis ID`
+
+`Observation`
+
+`Hypothesis`
+
+`Expected effect`
+
+`Experiment`
+
+`Acceptance criteria`
+
+`Rejection criteria`
+
+Exemple :
+
+Hypothesis ID:
+
+`H0042`
+
+Observation:
+
+Les entrées entre 12:00 et 13:30 ET ont une expectancy négative sur plusieurs folds.
+
+Hypothesis:
+
+Bloquer les nouvelles entrées pendant cette plage pourrait améliorer la robustesse.
+
+Experiment:
+
+Comparer avec/sans filtre sur la zone RESEARCH uniquement.
+
+Acceptance criteria:
+
+Amélioration de l’expectancy hors échantillon sur plusieurs folds sans concentration excessive du PnL.
+
+---
+
+# 33. UNE HYPOTHÈSE À LA FOIS
+
+Éviter de modifier cinq choses simultanément.
+
+Une expérience doit autant que possible modifier un nombre limité d’éléments.
+
+Exemple mauvais :
+
+- nouveau modèle ;
+- nouveau stop ;
+- nouvelles features ;
+- nouveau seuil ;
+- nouveau filtre horaire ;
+
+dans la même expérience.
+
+Exemple meilleur :
+
+tester uniquement :
+
+`stop_atr = 1.0`  
+vs  
+`stop_atr = 1.2`
+
+Cela permet de comprendre ce qui produit réellement la différence.
+
+---
+
+# 34. ESPACE DE RECHERCHE BORNÉ
+
+Créer :
+
+`research_space.yaml`
+
+Ce fichier définit les valeurs autorisées.
+
+Exemples :
+
+`signal_threshold`
+
+`stop_atr`
+
+`target_atr`
+
+`context_bars`
+
+`learning_rate`
+
+`dropout`
+
+`weight_decay`
+
+`max_depth`
+
+`n_estimators`
+
+`time_filter`
+
+Les espaces doivent être raisonnables.
+
+Exemple :
+
+threshold :
+
+0.50 à 0.70
+
+stop ATR :
+
+0.5 à 2.0
+
+target ATR :
+
+0.5 à 4.0
+
+context bars :
+
+12, 24, 48, 78
+
+Le Research Engine ne doit jamais agrandir automatiquement l’espace parce qu’il ne trouve rien.
+
+---
+
+# 35. BUDGET D’EXPÉRIENCES
+
+Créer :
+
+`research_budget.yaml`
+
+avec par exemple :
+
+`max_experiments_per_cycle`
+
+`max_experiments_total`
+
+`max_architectures_per_cycle`
+
+`max_trials_per_hyperparameter`
+
+`max_generations`
+
+`max_runtime_minutes`
+
+`stop_after_no_improvement`
+
+`max_cpu_threads`
+
+`max_gpu_memory`
+
+`max_parallel_jobs`
+
+Exemple raisonnable :
+
+- maximum 20 expériences par cycle ;
+- maximum 3 architectures DL ;
+- maximum 5 valeurs par paramètre ;
+- maximum 3 générations ;
+- arrêt après 5 expériences consécutives sans amélioration robuste.
+
+Une fois une limite atteinte :
+
+STOP.
+
+Aucune boucle infinie.
+
+---
+
+# 36. TIMEOUT DE RECHERCHE
+
+Chaque expérience doit avoir une durée maximale configurable.
+
+Si une expérience dépasse le temps autorisé :
+
+statut :
+
+`TIMEOUT`
+
+Le moteur doit :
+
+- sauvegarder les logs ;
+- libérer les ressources ;
+- passer à l’expérience suivante ou arrêter le cycle.
+
+Une expérience bloquée ne doit jamais bloquer tout le système.
+
+---
+
+# 37. OPTIMISATION AUTOMATIQUE LIMITÉE
+
+Si nécessaire, utiliser une méthode d’optimisation efficace telle que :
+
+- Optuna ;
+- Bayesian Optimization ;
+- Successive Halving.
+
+Mais uniquement :
+
+- dans RESEARCH ;
+- avec budget strict ;
+- avec plages prédéfinies ;
+- avec logs complets.
+
+Ne jamais lancer un grid search massif sans justification.
+
+Ne jamais utiliser le Final Test comme fonction objectif.
+
+---
+
+# 38. PAS D’OPTIMISATION SUR UN SCORE UNIQUE
+
+Ne pas optimiser uniquement :
+
+- rendement ;
+- Sharpe ;
+- AUC ;
+- accuracy ;
+- profit factor.
+
+Une stratégie peut avoir un bon score unique tout en étant fragile.
+
+Évaluer plusieurs dimensions.
+
+Par exemple :
+
+- rendement net ;
+- expectancy ;
+- drawdown ;
+- nombre de trades ;
+- stabilité ;
+- coûts ;
+- concentration ;
+- robustesse par fold.
+
+---
+
+# 39. CHAMPION
+
+Le système doit toujours connaître le modèle actuellement retenu comme :
+
+`CHAMPION`
+
+Le Champion représente la meilleure solution validée jusqu’à présent selon le protocole.
+
+Il peut être :
+
+- un RF ;
+- un GB ;
+- une règle ;
+- un modèle DL ;
+- un ensemble ;
+- CASH.
+
+CASH est un Champion valide si aucun modèle actif n’est suffisamment robuste.
+
+---
+
+# 40. CHALLENGER
+
+Toute nouvelle solution candidate est un :
+
+`CHALLENGER`
+
+Un challenger peut être :
+
+- nouveau modèle ;
+- nouveau seuil ;
+- nouvelle architecture ;
+- nouveau filtre ;
+- nouveau sizing ;
+- nouvelle combinaison.
+
+Le Challenger doit être comparé directement au Champion avec les mêmes données et hypothèses de coûts.
+
+---
+
+# 41. PROMOTION DU CHALLENGER
+
+Par défaut :
+
+`manual_promotion: true`
+
+Le système peut proposer :
+
+`CANDIDATE FOR PROMOTION`
+
+mais ne doit pas remplacer silencieusement le Champion.
+
+Une promotion doit être justifiée.
+
+Comparer :
+
+- rendement net ;
+- expectancy ;
+- max drawdown ;
+- profit factor ;
+- nombre de trades ;
+- stabilité des folds ;
+- résultats par régime ;
+- résultats mensuels ;
+- concentration du PnL ;
+- coûts ;
+- slippage ;
+- robustesse ;
+- complexité.
+
+Si les performances sont équivalentes :
+
+préférer le modèle le plus simple.
+
+---
+
+# 42. CRITÈRES DE PROMOTION
+
+Un Challenger ne doit pas être promu simplement parce qu’il gagne 0,2 % de rendement supplémentaire.
+
+Définir des critères minimaux.
+
+Par exemple :
+
+- aucune violation de causalité ;
+- expectancy nette positive ;
+- nombre minimum de trades ;
+- stabilité raisonnable sur plusieurs folds ;
+- drawdown non significativement dégradé ;
+- résistance aux coûts ;
+- PnL non excessivement concentré ;
+- pas d’optimum isolé ;
+- aucune forte dégradation en shadow validation ;
+- complexité justifiée.
+
+Si plusieurs critères échouent :
+
+`REJECTED`
+
+---
+
+# 43. PENALTY FOR COMPLEXITY
+
+Plus un modèle est complexe, plus il doit apporter une amélioration convaincante.
+
+Exemple :
+
+RF simple :
+
+Sharpe 1.05
+
+Transformer :
+
+Sharpe 1.07
+
+Si tout le reste est similaire :
+
+préférer RF.
+
+La faible amélioration ne justifie pas la complexité supplémentaire.
+
+Créer éventuellement :
+
+`complexity_score`
+
+mais ne pas le présenter comme une vérité scientifique.
+
+Il sert uniquement comme aide à la sélection.
+
+---
+
+# 44. VALIDATION ENGINE INDÉPENDANT
+
+Créer :
+
+`src/validation_engine/`
+
+Son rôle n’est PAS d’améliorer le modèle.
+
+Son rôle est d’essayer de le casser.
+
+Pour chaque Challenger intéressant, appliquer automatiquement plusieurs tests de robustesse.
+
+---
+
+# 45. STRESS DES COÛTS
+
+Tester au minimum :
+
+- coûts normaux ;
+- coûts +25 % ;
+- coûts +50 % ;
+- coûts ×2 si raisonnable.
+
+Tester séparément :
+
+- commissions ;
+- slippage.
+
+Une stratégie qui devient immédiatement négative avec une légère augmentation des coûts doit être considérée fragile.
+
+---
+
+# 46. RETARD D’EXÉCUTION
+
+Tester :
+
+signal t  
+→ entrée t+1
+
+puis stress test :
+
+signal t  
+→ entrée t+2
+
+Objectif :
+
+mesurer si l’edge dépend d’une exécution irréaliste extrêmement rapide.
+
+Si t+2 détruit totalement les performances :
+
+le signal mérite une forte prudence.
+
+---
+
+# 47. SUPPRESSION DES MEILLEURS TRADES
+
+Tester automatiquement :
+
+- performance complète ;
+- sans le meilleur trade ;
+- sans les 3 meilleurs trades ;
+- sans les 5 % meilleurs trades.
+
+Si la stratégie devient fortement négative :
+
+marquer :
+
+`PNL HIGHLY CONCENTRATED`
+
+---
+
+# 48. SUPPRESSION DES MEILLEURES SÉANCES
+
+Tester :
+
+- toutes les séances ;
+- sans la meilleure séance ;
+- sans les 3 meilleures séances.
+
+Une stratégie ne doit pas dépendre uniquement d’un événement exceptionnel.
+
+---
+
+# 49. TEST DE FRAGILITÉ DES PARAMÈTRES
+
+Pour un paramètre retenu, tester les valeurs voisines.
+
+Exemple :
+
+seuil retenu :
+
+0.58
+
+Tester :
+
+0.56  
+0.57  
+0.59  
+0.60
+
+Stop :
+
+1.0 ATR
+
+Tester :
+
+0.9  
+1.1
+
+Si de petites variations détruisent les performances :
+
+`FRAGILE PARAMETER REGION`
+
+---
+
+# 50. RECHERCHER DES PLATEAUX, PAS DES PICS
+
+Une bonne configuration devrait idéalement appartenir à une zone de paramètres stable.
+
+Exemple robuste :
+
+0.56 → +4.1 %  
+0.57 → +4.4 %  
+0.58 → +4.5 %  
+0.59 → +4.2 %
+
+Exemple suspect :
+
+0.56 → -1 %  
+0.57 → -2 %  
+0.58 → +14 %  
+0.59 → -3 %
+
+Dans le second cas :
+
+le point 0.58 est probablement un optimum fragile.
+
+Le Research Engine doit préférer le premier profil.
+
+---
+
+# 51. SURFACE DE PARAMÈTRES
+
+Produire pour les paramètres importants :
+
+- CSV ;
+- heatmaps si utile ;
+- graphiques simples.
+
+Exemples :
+
+threshold × stop
+
+stop × target
+
+context × threshold
+
+Afficher :
+
+- rendement ;
+- expectancy ;
+- drawdown ;
+- nombre de trades.
+
+Objectif :
+
+visualiser les plateaux et les optimums isolés.
+
+---
+
+# 52. STABILITÉ PAR FOLD
+
+Ne pas regarder uniquement la performance globale.
+
+Pour chaque stratégie :
+
+calculer les performances fold par fold.
+
+Afficher :
+
+- folds positifs ;
+- folds négatifs ;
+- médiane ;
+- dispersion ;
+- meilleur fold ;
+- pire fold.
+
+Une stratégie positive uniquement grâce à un fold exceptionnel doit être considérée fragile.
+
+---
+
+# 53. STABILITÉ PAR MOIS
+
+Lorsque suffisamment de données sont disponibles :
+
+calculer :
+
+- PnL mensuel ;
+- trades mensuels ;
+- expectancy mensuelle ;
+- drawdown mensuel.
+
+Éviter une stratégie qui gagne uniquement sur un mois.
+
+---
+
+# 54. STABILITÉ PAR RÉGIME
+
+Comparer les performances dans différents régimes :
+
+- forte volatilité ;
+- faible volatilité ;
+- tendance haussière ;
+- tendance baissière ;
+- marché latéral ;
+- volume élevé ;
+- volume faible.
+
+Créer :
+
+`regime_performance.csv`
+
+---
+
+# 55. DÉTECTION DE RÉGIMES
+
+Créer éventuellement :
+
+`src/regimes/`
+
+Commencer avec des règles simples et explicables.
+
+Par exemple à partir de :
+
+- volatilité ;
+- ATR ;
+- tendance ;
+- VWAP ;
+- volume.
+
+Ne pas commencer directement par un réseau neuronal complexe de détection des régimes.
+
+---
+
+# 56. ROUTAGE DE MODÈLES PAR RÉGIME
+
+Seulement si suffisamment de données existent.
+
+Architecture possible :
+
+REGIME DETECTOR  
+↓  
+MODEL ROUTER  
+↓  
+MODEL
+
+Exemple :
+
+TRENDING
+
+→ modèle Momentum / TCN
+
+MEAN REVERSION
+
+→ modèle VWAP
+
+UNKNOWN
+
+→ CASH
+
+Toutefois :
+
+le routage ajoute de la complexité et augmente le risque d’overfitting.
+
+Il doit donc apporter une amélioration significative et validée.
+
+---
+
+# 57. ZONE UNKNOWN
+
+Le régime doit pouvoir être :
+
+`UNKNOWN`
+
+Ne jamais forcer une classification de marché.
+
+Si le régime est incertain :
+
+NO TRADE ou modèle généraliste.
+
+---
+
+# 58. INCERTITUDE DU MODÈLE
+
+Lorsque raisonnable, mesurer une forme d’incertitude.
+
+Méthodes possibles :
+
+- dispersion entre modèles ;
+- ensembles ;
+- bootstrap ;
+- Monte Carlo Dropout pour DL.
+
+Exemple :
+
+score moyen :
+
+0.72
+
+mais dispersion très importante.
+
+Décision possible :
+
+`INSUFFICIENT CONFIDENCE`
+
+---
+
+# 59. ABSTENTION
+
+Créer une vraie logique d’abstention.
+
+Le moteur ne doit pas penser uniquement :
+
+BUY / DON'T BUY.
+
+Il doit pouvoir décider :
+
+`INSUFFICIENT CONFIDENCE`
+
+Par exemple si :
+
+- données douteuses ;
+- modèles en désaccord ;
+- incertitude élevée ;
+- régime inconnu ;
+- signal proche du seuil ;
+- drift important.
+
+---
+
+# 60. ENSEMBLES
+
+Tester de manière simple :
+
+- vote majoritaire ;
+- score moyen ;
+- score médian ;
+- ranking moyen.
+
+Ne créer un meta-modèle appris que si la quantité de données est suffisante.
+
+Un ensemble compliqué peut facilement apprendre les erreurs des modèles au lieu de les corriger.
+
+---
+
+# 61. DÉSACCORD ENTRE MODÈLES
+
+Enregistrer :
+
+- score RF ;
+- score GB ;
+- score LR ;
+- score DL ;
+- règles.
+
+Créer éventuellement :
+
+`model_disagreement`
+
+Si les modèles sont fortement en désaccord :
+
+augmenter l’incertitude.
+
+Le désaccord peut être une raison valide de :
+
+NO TRADE.
+
+---
+
+# 62. DATA SNOOPING
+
+Le système doit compter combien d’expériences ont été exécutées sur le même historique.
+
+Afficher :
+
+`Experiments performed: X`
+
+Plus X augmente :
+
+plus les nouveaux résultats doivent être considérés avec prudence.
+
+Ne jamais supprimer les expériences négatives du registre.
+
+---
+
+# 63. MULTIPLE TESTING
+
+Tester 500 variantes sur les mêmes données augmente fortement la probabilité de trouver un faux gagnant.
+
+Le système doit donc :
+
+- limiter le nombre d’essais ;
+- enregistrer chaque essai ;
+- éviter les recherches massives ;
+- afficher un avertissement lorsque beaucoup de variantes ont été évaluées.
+
+Ajouter éventuellement :
+
+`DATA SNOOPING WARNING`
+
+---
+
+# 64. EXPERIMENT REGISTRY
+
+Créer une base SQLite :
+
+`experiments.db`
+
+Chaque expérience doit contenir :
+
+- experiment_id ;
+- hypothesis_id ;
+- date ;
+- code version ;
+- dataset hash ;
+- période train ;
+- période validation ;
+- modèle ;
+- features ;
+- hyperparamètres ;
+- seed ;
+- résultats ;
+- coûts ;
+- slippage ;
+- nombre de trades ;
+- drawdown ;
+- stress tests ;
+- durée ;
+- CPU/GPU utilisé ;
+- décision ;
+- raison de décision.
+
+---
+
+# 65. NE PAS RÉPÉTER LES MÊMES EXPÉRIENCES
+
+Avant de lancer une expérience :
+
+chercher dans `experiments.db`.
+
+Si la même configuration existe déjà sur le même dataset :
+
+ne pas la relancer inutilement.
+
+Afficher :
+
+`EXPERIMENT ALREADY EXISTS`
+
+Sauf si le but explicite est de tester une seed différente ou une nouvelle version du code.
+
+---
+
+# 66. STATUTS DES EXPÉRIENCES
+
+Prévoir des statuts tels que :
+
+`PENDING`
+
+`RUNNING`
+
+`COMPLETED`
+
+`REJECTED`
+
+`CANDIDATE`
+
+`PROMOTED`
+
+`FAILED`
+
+`TIMEOUT`
+
+`DUPLICATE`
+
+Cela facilite l’audit.
+
+---
+
+# 67. JOURNAL DE RECHERCHE
+
+Pour chaque expérience, produire un résumé court :
+
+OBSERVATION
+
+HYPOTHESIS
+
+EXPERIMENT
+
+RESULT
+
+ROBUSTNESS
+
+DECISION
+
+NEXT ACTION
+
+Exemple :
+
+OBSERVATION:
+
+Momentum faible entre 12:00 et 13:30.
+
+HYPOTHESIS:
+
+Bloquer cette plage pourrait améliorer l’expectancy.
+
+RESULT:
+
+Expectancy légèrement meilleure mais seulement 8 trades.
+
+ROBUSTNESS:
+
+Résultat instable selon les folds.
+
+DECISION:
+
+REJECTED.
+
+---
+
+# 68. AUDIT TRAIL
+
+Toute modification retenue doit être retraçable.
+
+Pouvoir répondre :
+
+Pourquoi le Champion utilise-t-il ce seuil ?
+
+Pourquoi ce stop ?
+
+Pourquoi cette feature ?
+
+Quelle expérience a conduit à cette décision ?
+
+Créer un historique des promotions.
+
+---
+
+# 69. ANTI-BOUCLE INFINIE
+
+Le Research Engine doit avoir plusieurs protections simultanées.
+
+Arrêt si :
+
+- nombre maximum d’expériences atteint ;
+- nombre maximum de générations atteint ;
+- temps maximum atteint ;
+- ressources maximum atteintes ;
+- N expériences consécutives sans amélioration ;
+- aucune nouvelle hypothèse admissible ;
+- toutes les configurations autorisées déjà testées.
+
+À l’arrêt :
+
+produire :
+
+`research_cycle_report.json`
+
+---
+
+# 70. INTERDICTION DE CONTOURNER L’ARRÊT
+
+Le Research Engine ne doit jamais :
+
+- augmenter automatiquement le budget ;
+- élargir automatiquement les plages ;
+- créer de nouveaux paramètres pour continuer ;
+- recommencer automatiquement à zéro ;
+- supprimer l’historique des essais.
+
+Une nouvelle campagne de recherche doit être explicitement démarrée.
+
+---
+
+# 71. PROTECTION CONTRE L’OPTIMISATION DU RISQUE
+
+Le moteur ne doit pas considérer automatiquement :
+
+plus de risque = meilleur modèle.
+
+Ne jamais augmenter progressivement :
+
+`risk_per_trade_pct`
+
+simplement parce que le rendement augmente.
+
+Comparer les modèles à risque comparable.
+
+Le position sizing sera traité séparément dans la Partie 3.
+
+---
+
+# 72. SCORE DE MODÈLE ≠ SCORE DE SÉLECTION
+
+Séparer clairement :
+
+`model_score`
+
+et :
+
+`selection_metric`
+
+Un score RF/DL peut mesurer une prédiction.
+
+Le critère de sélection doit intégrer :
+
+- performance économique ;
+- robustesse ;
+- coûts ;
+- stabilité ;
+- complexité.
+
+Ne jamais présenter un score interne de sélection comme une probabilité de gain.
+
+---
+
+# 73. AUCUNE PROMOTION SUR FINAL TEST
+
+Même si un Challenger obtient un excellent résultat sur le Final Test :
+
+ce résultat ne doit pas servir à le promouvoir.
+
+Le Final Test évalue le protocole déjà figé.
+
+Si le Final Test révèle une faiblesse :
+
+le cycle suivant doit utiliser de nouvelles données hors échantillon pour étudier les modifications.
+
+---
+
+# 74. TESTS DU RESEARCH ENGINE
+
+Ajouter des tests vérifiant notamment :
+
+- respect du budget ;
+- arrêt après N échecs ;
+- absence de boucle infinie ;
+- non-utilisation du Final Test ;
+- détection des expériences dupliquées ;
+- enregistrement SQLite ;
+- Champion conservé après expérience rejetée ;
+- promotion manuelle par défaut ;
+- CASH autorisé ;
+- timeout correct ;
+- récupération après crash.
+
+---
+
+# 75. GLOSSAIRE — PARTIE 2
+
+Ajouter ces définitions au README.
+
+## Auto-Research
+
+Système automatisé qui analyse les résultats, formule une hypothèse et teste une modification de manière bornée.
+
+Il ne doit pas chercher indéfiniment à améliorer un backtest.
+
+## Hypothèse
+
+Proposition testable expliquant pourquoi une modification pourrait améliorer le système.
+
+## Experiment
+
+Test contrôlé d’une hypothèse.
+
+## Research Space
+
+Ensemble limité des paramètres et valeurs que le moteur a le droit d’explorer.
+
+## Research Budget
+
+Limites appliquées à la recherche automatique.
+
+Exemples :
+
+nombre maximum d’expériences ou temps maximum.
+
+## Champion
+
+Modèle ou stratégie actuellement retenu comme référence.
+
+## Challenger
+
+Nouvelle solution évaluée contre le Champion.
+
+## Promotion
+
+Décision de remplacer le Champion par un Challenger validé.
+
+## Validation Engine
+
+Module dont le rôle est d’essayer de démontrer qu’une amélioration est fragile.
+
+## Fragilité
+
+Dépendance excessive à une valeur précise ou à une condition particulière.
+
+## Parameter Surface
+
+Visualisation des performances obtenues pour différentes combinaisons de paramètres.
+
+## Plateau
+
+Zone dans laquelle plusieurs paramètres voisins donnent des performances similaires.
+
+Un plateau est généralement plus rassurant qu’un optimum isolé.
+
+## Data Snooping
+
+Risque de découvrir un faux avantage parce qu’un trop grand nombre d’idées ont été testées sur les mêmes données.
+
+## Multiple Testing
+
+Problème statistique causé par la répétition d’un grand nombre de tests.
+
+Plus on teste de variantes, plus la probabilité de trouver un faux gagnant augmente.
+
+## Experiment Registry
+
+Base enregistrant toutes les expériences, y compris les échecs.
+
+## MAE — Maximum Adverse Excursion
+
+Plus grande évolution défavorable subie pendant un trade.
+
+## MFE — Maximum Favorable Excursion
+
+Plus grande évolution favorable observée pendant un trade.
+
+## PnL Concentration
+
+Situation où une grande partie des gains dépend de quelques trades ou séances.
+
+## Regime
+
+Contexte de marché particulier.
+
+Exemples :
+
+forte volatilité ou marché en tendance.
+
+## Model Routing
+
+Sélection d’un modèle différent selon le régime détecté.
+
+## Abstention
+
+Décision volontaire de ne pas émettre de signal lorsque l’incertitude est trop élevée.
+
+## Model Disagreement
+
+Mesure du désaccord entre plusieurs modèles.
+
+Un fort désaccord peut indiquer une incertitude élevée.
+
+## Timeout
+
+Durée maximale autorisée pour une expérience avant son arrêt automatique.
+
+La PARTIE 3 continuera avec :
+
+- position sizing ;
+- calcul du nombre d’actions/contrats ;
+- gestion du risque ;
+- budget de risque ;
+- perte journalière ;
+- gaps ;
+- sizing dynamique ;
+- worker live ;
+- worker research ;
+- retraining ;
+- shadow mode ;
+- replay ;
+- data freshness ;
+- retard Yahoo ;
+- multi-provider ;
+- latence réelle.

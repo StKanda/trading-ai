@@ -1,0 +1,9 @@
+{
+  "version": "11.4-terminal",
+  "objective": "direct_economic_learning",
+  "ranking": "ExpectedTradeValue = predicted RealizedPnL",
+  "class_targets": ["ProfitableAfterCosts", "StopHit", "TargetHit", "TimeExit"],
+  "regression_targets": ["RealizedPnL", "RealizedReturn", "MFE", "MAE"],
+  "execution": "signal close t -> entry open t+1; stop priority; fees/slippage; no overnight",
+  "automatic_promotion": false
+}

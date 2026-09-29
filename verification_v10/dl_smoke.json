@@ -1,0 +1,14 @@
+{
+  "status": "DEVELOPMENT ONLY",
+  "best_epoch": 2,
+  "train_loss": 0.38733311792214714,
+  "valid_loss": 0.4624349772930145,
+  "device": "cpu",
+  "n_parameters": 49401,
+  "checkpoint": "runtime/dl_smoke/dl_smoke.pt",
+  "note": "Smoke test only; not evidence of a tradable edge.",
+  "train_sequences": 1916,
+  "valid_sequences": 781,
+  "validation_start": "2026-09-11",
+  "dataset_sessions": 41
+}

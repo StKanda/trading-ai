@@ -1,0 +1,1891 @@
+# TRADING AI V10 — PROMPT MAÎTRE  
+## PARTIE 4/4 — INTERFACE, MÉTRIQUES, TESTS, STRUCTURE, LIVRAISON ET VALIDATION FINALE
+
+---
+
+# 129. INTERFACE LOCALE
+
+Créer une interface locale simple, rapide et lisible.
+
+Préférence :
+
+`Streamlit`
+
+Commande souhaitée :
+
+`streamlit run app.py`
+
+L’interface ne doit pas être surchargée.
+
+Priorités :
+
+1. comprendre immédiatement l’état du système ;
+2. comprendre le signal actuel ;
+3. comprendre le risque ;
+4. comprendre la qualité des données ;
+5. pouvoir consulter les backtests ;
+6. pouvoir suivre les recherches ;
+7. comprendre pourquoi une décision est prise.
+
+Éviter :
+
+- dizaines de graphiques simultanés ;
+- couleurs inutiles ;
+- jargon non expliqué ;
+- menus trop complexes.
+
+---
+
+# 130. DASHBOARD PRINCIPAL
+
+Créer une page principale claire.
+
+Afficher en haut :
+
+`SPY — 5 MIN`
+
+Puis les informations système :
+
+- MARKET OPEN / CLOSED ;
+- heure de marché ET ;
+- Live Worker ON/OFF ;
+- Research Worker ON/OFF ;
+- provider actif ;
+- dernière bougie ;
+- état des données ;
+- retard ;
+- Champion actif ;
+- dernier retraining ;
+- état drift.
+
+Exemple :
+
+`MARKET: OPEN`
+
+`DATA: FRESH`
+
+`PROVIDER: Yahoo`
+
+`LAST BAR: 10:35 ET`
+
+`LAG: 0 bars`
+
+`CHAMPION: RF_A_v3`
+
+`LIVE WORKER: ON`
+
+---
+
+# 131. BLOC SIGNAL ACTUEL
+
+Créer un bloc très visible :
+
+`SIGNAL ACTUEL`
+
+Valeurs possibles :
+
+`LONG CANDIDATE`
+
+`NO TRADE`
+
+`INSUFFICIENT CONFIDENCE`
+
+`NO TRADE — STALE DATA`
+
+`NO TRADE — DAILY RISK LIMIT`
+
+`NO TRADE — POSITION TOO SMALL`
+
+Afficher ensuite uniquement les informations importantes :
+
+- heure ;
+- prix ;
+- entrée théorique ;
+- stop ;
+- target ;
+- score ;
+- incertitude ;
+- Reward/Risk ;
+- quantité ;
+- exposition ;
+- risque planifié ;
+- coûts ;
+- raison principale.
+
+Exemple :
+
+`LONG CANDIDATE`
+
+Entry:
+
+`$672.45`
+
+Stop:
+
+`$670.90`
+
+Target:
+
+`$675.80`
+
+Size:
+
+`64 SPY`
+
+Planned Risk:
+
+`$112 / 0.25%`
+
+Model Score:
+
+`0.64`
+
+Data:
+
+`FRESH`
+
+Reason:
+
+`Momentum + above VWAP + high relative volume`
+
+Ne pas afficher de fausse précision.
+
+---
+
+# 132. RAISON DU SIGNAL
+
+Pour chaque décision, fournir une explication courte.
+
+Exemples :
+
+`NO TRADE`
+
+Reason:
+
+- score sous le seuil ;
+- volatilité insuffisante ;
+- modèles en désaccord ;
+- régime inconnu.
+
+Ou :
+
+`LONG CANDIDATE`
+
+Reason:
+
+- tendance positive ;
+- prix au-dessus du VWAP ;
+- volume relatif élevé ;
+- Champion au-dessus du seuil ;
+- risque acceptable.
+
+Ne pas produire une longue explication générative à chaque bougie.
+
+Préférer des raisons structurées et déterministes.
+
+---
+
+# 133. DATA FEED PANEL
+
+Créer un panneau :
+
+`DATA FEED`
+
+Afficher :
+
+- provider principal ;
+- fallback ;
+- dernière bougie ;
+- bougie attendue ;
+- âge de la donnée ;
+- retard en minutes ;
+- retard en barres ;
+- bougies manquantes ;
+- provider health.
+
+Statuts :
+
+`FRESH`
+
+`WARNING`
+
+`DELAYED`
+
+`STALE`
+
+`PROVIDER DISAGREEMENT`
+
+`NO VALID DATA FEED`
+
+---
+
+# 134. POSITION SIZE PANEL
+
+Créer un panneau :
+
+`POSITION SIZE`
+
+Afficher :
+
+- capital actuel ;
+- risque/trade ;
+- budget de risque ;
+- prix d’entrée ;
+- stop ;
+- risque/action ;
+- quantité par risque ;
+- quantité par levier ;
+- quantité retenue ;
+- notional ;
+- risque planifié ;
+- budget journalier restant.
+
+Exemple :
+
+`EQUITY: $100,000`
+
+`RISK/TRADE: 0.25%`
+
+`RISK BUDGET: $250`
+
+`SIZE: 72 SPY`
+
+`NOTIONAL: $48,600`
+
+`PLANNED RISK: $239`
+
+`DAILY RISK REMAINING: $611`
+
+---
+
+# 135. GRAPHIQUE PRINCIPAL
+
+Afficher un graphique SPY lisible.
+
+Inclure si disponibles :
+
+- chandeliers ;
+- VWAP ;
+- supports ;
+- résistances ;
+- opening range ;
+- entrée théorique ;
+- sortie ;
+- stop ;
+- target.
+
+Permettre de choisir une fenêtre simple :
+
+- séance ;
+- 2 jours ;
+- 5 jours.
+
+Éviter d’afficher trop d’indicateurs simultanément.
+
+---
+
+# 136. SOUS-GRAPHIQUES
+
+Sous le graphique principal, afficher éventuellement :
+
+- volume ;
+- volume relatif ;
+- ATR ;
+- score modèle ;
+- incertitude.
+
+Limiter le nombre d’éléments simultanés.
+
+---
+
+# 137. ONGLET BACKTEST
+
+Créer un onglet :
+
+`BACKTEST`
+
+Afficher les stratégies importantes :
+
+- CASH ;
+- Buy & Hold ;
+- Intraday Hold ;
+- Momentum ;
+- VWAP ;
+- ORB ;
+- LR ;
+- RF ;
+- GB ;
+- DL ;
+- Ensemble ;
+- Champion.
+
+Afficher un tableau comparatif.
+
+Colonnes recommandées :
+
+- Return ;
+- Max Drawdown ;
+- Trades ;
+- Win Rate ;
+- Profit Factor ;
+- Expectancy ;
+- Avg Trade ;
+- Median Trade ;
+- Exposure ;
+- Costs ;
+- Sharpe ;
+- Sortino.
+
+---
+
+# 138. EQUITY CURVE
+
+Afficher les equity curves sans surcharger.
+
+Permettre de sélectionner quelques stratégies.
+
+Par défaut :
+
+- Buy & Hold ;
+- Champion ;
+- meilleur baseline simple ;
+- CASH.
+
+Ne pas afficher 25 courbes simultanément.
+
+---
+
+# 139. MÉTRIQUES
+
+Calculer pour chaque stratégie pertinente :
+
+- rendement net ;
+- rendement brut ;
+- commissions ;
+- slippage ;
+- max drawdown ;
+- volatilité ;
+- nombre de trades ;
+- nombre de séances ;
+- win rate ;
+- profit factor ;
+- expectancy ;
+- PnL moyen ;
+- PnL médian ;
+- gain moyen ;
+- perte moyenne ;
+- meilleur trade ;
+- pire trade ;
+- exposition ;
+- turnover ;
+- Sharpe ;
+- Sortino.
+
+Si la période est suffisamment longue :
+
+- CAGR ;
+- Calmar.
+
+Ne pas annualiser de manière trompeuse un historique trop court.
+
+---
+
+# 140. AVERTISSEMENT STATISTIQUE
+
+Afficher automatiquement un avertissement si :
+
+- nombre de séances faible ;
+- nombre de trades faible ;
+- final test trop court ;
+- diversité des régimes insuffisante.
+
+Exemple :
+
+`STATISTICAL WARNING`
+
+`Only 41 market sessions are available.`
+
+`Results are insufficient for a reliable conclusion.`
+
+Ne jamais cacher cet avertissement parce que le résultat est positif.
+
+---
+
+# 141. ONGLET ROBUSTESSE
+
+Créer :
+
+`ROBUSTNESS`
+
+Afficher :
+
+- performances par fold ;
+- performances mensuelles ;
+- performance par régime ;
+- stress coûts ;
+- stress slippage ;
+- t+2 execution ;
+- suppression meilleurs trades ;
+- suppression meilleures séances ;
+- bootstrap ;
+- surface paramètres ;
+- sensibilité au seuil ;
+- fragilité du stop/target.
+
+---
+
+# 142. BOOTSTRAP
+
+Lorsque pertinent, effectuer des bootstraps par séance plutôt que mélanger naïvement toutes les barres intraday.
+
+Produire des estimations de dispersion.
+
+Ne pas interpréter les intervalles comme une garantie.
+
+---
+
+# 143. ONGLET RESEARCH LAB
+
+Créer :
+
+`RESEARCH LAB`
+
+Afficher :
+
+- Champion ;
+- Challengers ;
+- cycle actuel ;
+- dernière hypothèse ;
+- expériences terminées ;
+- expériences rejetées ;
+- budget restant ;
+- runtime ;
+- prochain test ;
+- dernier résultat.
+
+Boutons possibles :
+
+`START RESEARCH CYCLE`
+
+`STOP AFTER CURRENT EXPERIMENT`
+
+`VIEW CHALLENGER`
+
+`MARK FOR REVIEW`
+
+Ne jamais créer :
+
+`OPTIMIZE UNTIL PROFITABLE`
+
+---
+
+# 144. RESEARCH BUDGET VISIBLE
+
+Afficher :
+
+`Experiments this cycle`
+
+`Experiments total`
+
+`Remaining experiments`
+
+`Runtime remaining`
+
+`Architectures tested`
+
+`No-improvement counter`
+
+Objectif :
+
+rendre visible la limite de recherche.
+
+---
+
+# 145. CHAMPION / CHALLENGER VIEW
+
+Créer une comparaison directe.
+
+Exemple :
+
+| Metric | Champion | Challenger |
+|---|---:|---:|
+| Net Return | | |
+| Max DD | | |
+| Expectancy | | |
+| Trades | | |
+| Cost Stress | | |
+| Positive Folds | | |
+| PnL Concentration | | |
+| Complexity | | |
+
+Afficher :
+
+`REJECTED`
+
+ou :
+
+`CANDIDATE FOR PROMOTION`
+
+Ne pas afficher uniquement :
+
+`Challenger +12% better`
+
+sans contexte.
+
+---
+
+# 146. PROMOTION MANUELLE
+
+Si `manual_promotion = true` :
+
+prévoir une action explicite permettant à l’utilisateur de promouvoir un Challenger.
+
+Avant confirmation, afficher :
+
+- modèle actuel ;
+- candidat ;
+- différences ;
+- validation ;
+- dataset ;
+- période ;
+- stress tests.
+
+La promotion doit être enregistrée dans l’audit trail.
+
+---
+
+# 147. ONGLET EXPÉRIENCES
+
+Créer :
+
+`EXPERIMENTS`
+
+Afficher le contenu de `experiments.db`.
+
+Colonnes :
+
+- ID ;
+- date ;
+- hypothèse ;
+- modèle ;
+- dataset ;
+- résultat ;
+- robustness ;
+- décision ;
+- runtime.
+
+Filtres :
+
+- ACCEPTED ;
+- REJECTED ;
+- FAILED ;
+- TIMEOUT ;
+- DUPLICATE.
+
+---
+
+# 148. ONGLET MODÈLE
+
+Afficher :
+
+- Champion ;
+- type modèle ;
+- architecture ;
+- features ;
+- training period ;
+- dataset hash ;
+- seed ;
+- paramètres ;
+- date entraînement ;
+- checkpoint ;
+- version code ;
+- score validation ;
+- date de promotion.
+
+Pour DL :
+
+afficher éventuellement :
+
+- nombre de paramètres ;
+- epochs ;
+- early stopping epoch ;
+- learning rate ;
+- contexte.
+
+---
+
+# 149. ONGLET DATA
+
+Créer :
+
+`DATA`
+
+Afficher :
+
+- dataset actuel ;
+- source ;
+- timeframe ;
+- période ;
+- hash ;
+- nombre de barres ;
+- nombre de séances ;
+- sessions incomplètes ;
+- missing bars ;
+- dernière mise à jour ;
+- provider health ;
+- data revisions.
+
+---
+
+# 150. ONGLET LOGS
+
+Créer un écran minimal :
+
+`LOGS`
+
+Filtres :
+
+- INFO ;
+- WARNING ;
+- ERROR.
+
+Séparer :
+
+- live worker ;
+- research worker ;
+- data provider ;
+- models.
+
+Éviter de noyer l’utilisateur sous des logs techniques par défaut.
+
+---
+
+# 151. INFO-BULLES
+
+Chaque métrique ou terme technique visible doit avoir une description courte.
+
+Exemple :
+
+`Profit Factor [?]`
+
+Info-bulle :
+
+« Gains bruts divisés par pertes brutes. »
+
+Autres exemples :
+
+Sharpe
+
+« Rendement ajusté de la volatilité. À interpréter avec prudence sur peu de données. »
+
+Max Drawdown
+
+« Plus forte baisse du capital depuis un sommet. »
+
+Expectancy
+
+« Gain ou perte moyen observé par trade. »
+
+Planned Risk
+
+« Perte estimée si le stop est exécuté comme prévu. Un gap peut produire une perte plus importante. »
+
+---
+
+# 152. COULEURS
+
+Utiliser peu de couleurs.
+
+Exemple :
+
+vert :
+
+état valide / signal potentiel.
+
+orange :
+
+warning.
+
+rouge :
+
+erreur / stale / risque bloquant.
+
+gris :
+
+NO TRADE / information neutre.
+
+Ne pas utiliser le vert pour suggérer qu’un trade est garanti gagnant.
+
+---
+
+# 153. PERFORMANCE DE L’INTERFACE
+
+Le dashboard ne doit pas recalculer les modèles complets à chaque rafraîchissement.
+
+Il doit principalement lire :
+
+- fichiers d’état ;
+- SQLite ;
+- résultats déjà calculés.
+
+Le Live Worker effectue le calcul de signal.
+
+Le Research Worker effectue les expériences.
+
+Streamlit affiche les résultats.
+
+---
+
+# 154. STRUCTURE V10
+
+Organiser proprement le projet.
+
+Exemple indicatif :
+
+`trading_ai_v10/`
+
+`app.py`
+
+`main.py`
+
+`worker.py`
+
+`research_worker.py`
+
+`replay.py`
+
+`requirements.txt`
+
+`README.md`
+
+`configs/`
+
+`data/`
+
+`models/`
+
+`checkpoints/`
+
+`results/`
+
+`logs/`
+
+`tests/`
+
+`src/data/`
+
+`src/features/`
+
+`src/models/`
+
+`src/deep_learning/`
+
+`src/backtest/`
+
+`src/risk/`
+
+`src/live/`
+
+`src/research_engine/`
+
+`src/validation_engine/`
+
+`src/regimes/`
+
+`src/ui/`
+
+Adapter cette structure intelligemment à V9.
+
+Ne pas refactorer inutilement tout le projet si la structure actuelle est déjà bonne.
+
+---
+
+# 155. CONFIGURATION
+
+Éviter les paramètres importants dispersés dans le code.
+
+Créer des fichiers de configuration.
+
+Exemples :
+
+`configs/backtest.yaml`
+
+`configs/risk.yaml`
+
+`configs/data.yaml`
+
+`configs/deep_learning.yaml`
+
+`configs/research_space.yaml`
+
+`configs/research_budget.yaml`
+
+`configs/live.yaml`
+
+Les paramètres critiques doivent être lisibles.
+
+---
+
+# 156. PROTOCOL LOCK
+
+Avant Final Test, produire :
+
+`protocol_lock.json`
+
+Il doit inclure au minimum :
+
+- dataset research hash ;
+- test dates ;
+- modèle ;
+- features ;
+- seuil ;
+- stop ;
+- target ;
+- coûts ;
+- slippage ;
+- sizing ;
+- risk_per_trade ;
+- leverage ;
+- règles horaires ;
+- régime ;
+- paramètres DL si applicable ;
+- seed ;
+- version code/config.
+
+Une fois créé :
+
+la phase final doit charger ce fichier.
+
+Elle ne doit pas recalculer un meilleur protocole.
+
+---
+
+# 157. ENVIRONMENT REPORT
+
+Créer :
+
+`environment_report.txt`
+
+ou JSON.
+
+Inclure :
+
+- OS ;
+- Python ;
+- architecture CPU ;
+- RAM si accessible ;
+- GPU ;
+- CUDA ;
+- PyTorch/TensorFlow ;
+- NumPy ;
+- pandas ;
+- sklearn ;
+- Streamlit.
+
+Objectif :
+
+faciliter la reproductibilité et le diagnostic.
+
+---
+
+# 158. REQUIREMENTS
+
+Créer :
+
+`requirements.txt`
+
+avec versions raisonnablement verrouillées.
+
+Éviter des dépendances inutiles.
+
+Le projet doit pouvoir fonctionner en CPU-only.
+
+Les dépendances GPU ne doivent pas rendre l’installation CPU impossible.
+
+---
+
+# 159. SCRIPTS SIMPLES
+
+Créer si possible :
+
+`run_tests.sh`
+
+`run_research.sh`
+
+`run_final.sh`
+
+`train_dl.sh`
+
+`start_worker.sh`
+
+`start_research_worker.sh`
+
+`start_dashboard.sh`
+
+`run_replay.sh`
+
+Les scripts doivent afficher les erreurs.
+
+Ne pas cacher les erreurs avec des redirections silencieuses.
+
+---
+
+# 160. COMMANDES PRINCIPALES
+
+Documenter des commandes simples.
+
+Installation :
+
+`pip install -r requirements.txt`
+
+Tests :
+
+`python -m unittest discover -s tests -v`
+
+ou pytest si le projet l’utilise déjà.
+
+Audit :
+
+`python main.py audit ...`
+
+Research :
+
+`python main.py research ...`
+
+DL :
+
+`python main.py train-dl ...`
+
+Final :
+
+`python main.py final ...`
+
+Worker :
+
+`python worker.py`
+
+Research Worker :
+
+`python research_worker.py`
+
+Replay :
+
+`python replay.py ...`
+
+Dashboard :
+
+`streamlit run app.py`
+
+Adapter exactement les commandes à l’implémentation réelle.
+
+---
+
+# 161. TESTS AUTOMATIQUES OBLIGATOIRES
+
+Conserver tous les tests V9 valides.
+
+Ajouter des tests pour :
+
+- OHLC ;
+- trous ;
+- timezone ;
+- calendrier ;
+- bougies complètes ;
+- causalité ;
+- signal t / execution t+1 ;
+- stop prioritaire ;
+- gap ;
+- flat overnight ;
+- frais ;
+- slippage ;
+- limite de perte quotidienne ;
+- levier ;
+- position sizing ;
+- risk budget ;
+- purge ;
+- embargo ;
+- train-only scaler ;
+- feature parity ;
+- signal parity ;
+- replay parity ;
+- research budget ;
+- timeout ;
+- duplicate experiment ;
+- protocol lock ;
+- absence d’optimisation final ;
+- Champion conservé après rejet ;
+- manual promotion par défaut ;
+- stale data bloque signal ;
+- missing bar bloque ou avertit ;
+- fallback provider ;
+- provider disagreement ;
+- aucune dépendance broker d’exécution.
+
+---
+
+# 162. TESTS DE POSITION SIZING
+
+Créer explicitement des tests.
+
+Cas :
+
+Capital :
+
+100 000
+
+Risque :
+
+0.25 %
+
+Stop distance :
+
+1 $
+
+Vérifier la quantité attendue.
+
+Tester aussi :
+
+- stop très éloigné ;
+- capital faible ;
+- quantité <1 ;
+- leverage limit ;
+- daily risk restant insuffisant ;
+- gap ;
+- coûts.
+
+---
+
+# 163. TESTS DATA FRESHNESS
+
+Tester :
+
+- dernière bougie à l’heure ;
+- retard 1 barre ;
+- retard important ;
+- bougie en formation ;
+- marché fermé ;
+- early close ;
+- DST ;
+- provider indisponible ;
+- fallback OK ;
+- fallback lui-même stale.
+
+Le système doit avoir un comportement déterministe.
+
+---
+
+# 164. TESTS RESEARCH ENGINE
+
+Tester :
+
+- budget maximum ;
+- max generations ;
+- stop après N non-améliorations ;
+- timeout ;
+- duplicate detection ;
+- crash/recovery ;
+- aucune boucle infinie ;
+- aucune lecture final test pendant research ;
+- expérience rejetée ne change pas le Champion.
+
+---
+
+# 165. TEST DL MINIMAL
+
+Créer un smoke test DL rapide.
+
+Il ne doit pas entraîner un gros réseau.
+
+Tester :
+
+- création séquence ;
+- scaler train-only ;
+- forward pass ;
+- entraînement court ;
+- sauvegarde checkpoint ;
+- rechargement ;
+- inference ;
+- reproductibilité approximative selon seed.
+
+---
+
+# 166. VALIDATION DU DASHBOARD
+
+Avant livraison :
+
+vérifier que Streamlit démarre sans erreur.
+
+Pas nécessaire de maintenir le serveur actif.
+
+Il suffit de vérifier :
+
+- import ;
+- démarrage ;
+- lecture des fichiers ;
+- chargement des pages principales.
+
+---
+
+# 167. VALIDATION DU LIVE WORKER
+
+Tester le Live Worker avec :
+
+- données locales ;
+- bougie simulée ou historique ;
+- aucune connexion broker ;
+- aucune exécution.
+
+Vérifier qu’il produit :
+
+- état ;
+- signal ;
+- sizing ;
+- log ;
+- mise à jour runtime.
+
+---
+
+# 168. VALIDATION DU RESEARCH WORKER
+
+Lancer un petit cycle avec budget très faible.
+
+Exemple :
+
+2 ou 3 expériences maximum.
+
+Vérifier :
+
+- arrêt ;
+- registry ;
+- hypothèses ;
+- résultats ;
+- absence de boucle infinie.
+
+---
+
+# 169. VALIDATION REPLAY
+
+Rejouer une petite séance.
+
+Comparer :
+
+- features ;
+- scores ;
+- signaux ;
+- tailles.
+
+Avec le backtest.
+
+Toute divergence doit être documentée ou corrigée.
+
+---
+
+# 170. SÉCURITÉ BROKER
+
+Rechercher dans tout le projet les dépendances ou appels pouvant :
+
+- envoyer un ordre ;
+- modifier un ordre ;
+- annuler un ordre ;
+- transmettre une position.
+
+Il ne doit en exister aucun dans V10.
+
+Si un provider provenant d’un broker est utilisé pour les données :
+
+limiter explicitement son module à la lecture de données.
+
+---
+
+# 171. PAS DE SECRETS DANS LE CODE
+
+Ne jamais inclure :
+
+- API key ;
+- password ;
+- secret ;
+- token.
+
+Utiliser si nécessaire :
+
+variables d’environnement.
+
+Créer :
+
+`.env.example`
+
+sans aucune vraie clé.
+
+---
+
+# 172. LOGS
+
+Créer des logs structurés.
+
+Inclure au minimum :
+
+- timestamp ;
+- module ;
+- niveau ;
+- message.
+
+Pour les signaux :
+
+- market timestamp ;
+- generated_at ;
+- provider ;
+- model ;
+- signal.
+
+Pour les expériences :
+
+- experiment_id ;
+- hypothesis_id ;
+- status.
+
+---
+
+# 173. CHECKSUM DES MODÈLES
+
+Pour chaque Champion sauvegardé :
+
+produire un checksum.
+
+Exemple :
+
+SHA-256.
+
+Cela permet de vérifier que le modèle chargé en live correspond réellement au modèle promu.
+
+---
+
+# 174. VERSION DU CHAMPION
+
+Utiliser une identité explicite.
+
+Exemple :
+
+`RF_A_v3`
+
+ou :
+
+`TCN_v2`
+
+Enregistrer :
+
+- date ;
+- checksum ;
+- config ;
+- dataset hash ;
+- protocol version.
+
+---
+
+# 175. BACKUP DU CHAMPION
+
+Avant toute promotion :
+
+conserver l’ancien Champion.
+
+Permettre un rollback manuel.
+
+Exemple :
+
+`models/champions/history/`
+
+Une promotion incorrecte ne doit jamais supprimer le modèle précédent.
+
+---
+
+# 176. ROLLBACK
+
+Prévoir une commande simple permettant de revenir au Champion précédent.
+
+Sans ordre réel.
+
+Le rollback change uniquement le modèle d’inférence local.
+
+Journaliser :
+
+- ancien Champion ;
+- nouveau Champion ;
+- raison ;
+- date.
+
+---
+
+# 177. README
+
+Créer un README clair.
+
+Sections minimales :
+
+1. objectif ;
+2. avertissement recherche/paper only ;
+3. installation ;
+4. structure ;
+5. données ;
+6. audit ;
+7. research ;
+8. final test ;
+9. Deep Learning ;
+10. workers ;
+11. dashboard ;
+12. position sizing ;
+13. data freshness ;
+14. replay ;
+15. shadow ;
+16. Champion/Challenger ;
+17. limites statistiques ;
+18. glossaire.
+
+---
+
+# 178. README POUR UTILISATEUR NON TECHNIQUE
+
+Ajouter une section :
+
+`QUICK START`
+
+Avec le minimum nécessaire.
+
+Exemple :
+
+### 1. Installer
+
+`pip install -r requirements.txt`
+
+### 2. Tester
+
+`./run_tests.sh`
+
+### 3. Ouvrir l’interface
+
+`./start_dashboard.sh`
+
+### 4. Lancer le worker
+
+`./start_worker.sh`
+
+### 5. Lancer une recherche
+
+`./start_research_worker.sh`
+
+Ne pas obliger l’utilisateur à comprendre toute l’architecture pour démarrer.
+
+---
+
+# 179. DOCUMENTATION DES RISQUES
+
+Le README doit expliquer clairement :
+
+- un backtest n’est pas une garantie ;
+- un score n’est pas une probabilité ;
+- un stop n’est pas garanti ;
+- les gaps existent ;
+- les frais/slippage peuvent changer ;
+- la qualité des données peut être insuffisante ;
+- un modèle peut dériver ;
+- une stratégie peut perdre son edge ;
+- 41 séances sont insuffisantes pour conclure sérieusement.
+
+---
+
+# 180. STATUS DEVELOPMENT ONLY
+
+Lorsque les données sont insuffisantes :
+
+afficher dans l’interface :
+
+`DEVELOPMENT ONLY`
+
+et dans les rapports :
+
+`NOT STATISTICALLY RELIABLE`
+
+Ne pas masquer cet état.
+
+---
+
+# 181. LIVRABLE FINAL
+
+Créer :
+
+`trading_ai_v10.zip`
+
+Le ZIP doit contenir le projet V10 complet.
+
+Ne pas mettre dedans inutilement :
+
+- environnement virtuel ;
+- caches Python ;
+- gros checkpoints temporaires ;
+- fichiers temporaires ;
+- secrets.
+
+Inclure uniquement les éléments nécessaires.
+
+---
+
+# 182. MANIFEST DU ZIP
+
+Créer :
+
+`BUILD_MANIFEST.json`
+
+Inclure :
+
+- version V10 ;
+- date de build ;
+- fichiers principaux ;
+- nombre de tests ;
+- status ;
+- dataset éventuellement utilisé pour smoke test ;
+- hash du ZIP si possible après création.
+
+---
+
+# 183. VALIDATION AVANT CRÉATION DU ZIP
+
+Avant livraison, exécuter autant que possible :
+
+1. extraction/inspection V9 ;
+2. tests V9 ;
+3. audit dataset ;
+4. tests V10 ;
+5. smoke test ML ;
+6. smoke test DL ;
+7. research cycle borné ;
+8. création protocol lock ;
+9. final test uniquement si approprié ;
+10. Live Worker ;
+11. Research Worker ;
+12. Data Freshness ;
+13. Fallback simulé ;
+14. position sizing ;
+15. replay ;
+16. dashboard ;
+17. absence broker execution ;
+18. création du ZIP ;
+19. vérification que le ZIP s’extrait correctement.
+
+---
+
+# 184. SI UNE ÉTAPE ÉCHOUE
+
+Ne pas masquer l’erreur.
+
+Corriger si raisonnablement possible.
+
+Si elle ne peut pas être corrigée :
+
+indiquer précisément :
+
+- ce qui échoue ;
+- pourquoi ;
+- impact ;
+- workaround éventuel.
+
+Ne jamais écrire :
+
+`ALL TESTS PASSED`
+
+si ce n’est pas vrai.
+
+---
+
+# 185. RÉPONSE FINALE ATTENDUE
+
+À la fin, répondre brièvement.
+
+Format recommandé :
+
+`V10 créée.`
+
+### Audit V9
+Résumé.
+
+### Ajouts V10
+Résumé.
+
+### Tests
+`XX passed / YY failed`
+
+### Data
+Séances / barres / statut.
+
+### Research
+Champion / Challengers / nombre d’expériences.
+
+### DL
+Smoke test / statut statistique.
+
+### Risque
+Sizing actif / paramètres de référence.
+
+### Data Feed
+Provider / freshness / fallback.
+
+### Limites
+Résumé clair.
+
+### Commandes
+Dashboard
+
+Worker
+
+Research
+
+Replay
+
+Final
+
+### ZIP
+Lien de téléchargement.
+
+Ne pas écrire un discours marketing.
+
+---
+
+# 186. GLOSSAIRE COMPLÉMENTAIRE
+
+Ajouter ces définitions au README avec celles des parties précédentes.
+
+## Equity
+
+Capital théorique actuel du portefeuille.
+
+## Exposure
+
+Part du capital exposée au marché.
+
+## Turnover
+
+Quantité de capital achetée et vendue au cours du temps.
+
+Un turnover élevé augmente généralement les coûts.
+
+## Sharpe Ratio
+
+Mesure du rendement rapporté à la volatilité.
+
+Peu fiable sur un échantillon très court.
+
+## Sortino Ratio
+
+Mesure similaire au Sharpe mais utilisant principalement la volatilité négative.
+
+## Profit Factor
+
+Gains bruts divisés par pertes brutes.
+
+## Expectancy
+
+Gain ou perte moyen par trade observé.
+
+## Win Rate
+
+Pourcentage de trades gagnants.
+
+Un Win Rate élevé ne signifie pas nécessairement qu’une stratégie est rentable.
+
+## Drawdown
+
+Baisse du capital depuis un plus haut précédent.
+
+## Max Drawdown
+
+Plus grande baisse observée entre un sommet et le creux suivant.
+
+## CAGR
+
+Rendement annuel composé.
+
+Ne pas l’utiliser comme métrique centrale sur quelques semaines de données.
+
+## Calmar Ratio
+
+Rapport entre rendement annuel et Max Drawdown.
+
+Pertinent surtout sur des historiques suffisamment longs.
+
+## Reward/Risk
+
+Rapport entre le gain potentiel jusqu’au target et la perte planifiée jusqu’au stop.
+
+## Slippage
+
+Différence entre le prix théorique et le prix d’exécution simulé ou réellement observable.
+
+## Commission
+
+Coût explicite appliqué à une transaction.
+
+## Leverage
+
+Rapport entre exposition et capital.
+
+Levier 1 signifie que l’exposition maximale est approximativement égale au capital.
+
+## CASH
+
+État dans lequel aucune position n’est prise.
+
+CASH est une stratégie valide.
+
+## NO TRADE
+
+Décision de ne pas ouvrir de position à cet instant.
+
+## INSUFFICIENT CONFIDENCE
+
+Décision d’abstention parce que l’incertitude est jugée trop importante.
+
+## Paper Analysis
+
+Analyse sans passage d’ordre réel.
+
+## Shadow Mode
+
+Observation prospective des signaux sans exécution réelle.
+
+## Final Test
+
+Partie verrouillée des données servant uniquement à l’évaluation finale du protocole.
+
+## Protocol Lock
+
+Configuration figée avant consultation du Final Test.
+
+## Benchmark
+
+Référence servant à comparer une stratégie.
+
+Exemple :
+
+Buy & Hold.
+
+## Baseline
+
+Solution simple servant de point de comparaison.
+
+## Backtest
+
+Simulation historique d’une stratégie.
+
+## Walk-Forward
+
+Méthode chronologique consistant à entraîner sur le passé et évaluer sur le futur.
+
+## Out-of-Sample
+
+Données non utilisées directement pour entraîner le modèle évalué.
+
+## Overfitting
+
+Surapprentissage du passé entraînant une mauvaise généralisation future.
+
+## Feature
+
+Variable donnée à un modèle.
+
+## Label
+
+Valeur cible utilisée pendant l’entraînement.
+
+## Threshold
+
+Seuil transformant un score en décision.
+
+## Model Score
+
+Sortie numérique d’un modèle.
+
+Elle ne représente pas automatiquement une probabilité.
+
+## Calibration
+
+Processus visant à rendre un score plus proche d’une probabilité interprétable.
+
+Elle doit être validée hors échantillon.
+
+## Early Stopping
+
+Arrêt de l’entraînement lorsqu’il n’y a plus d’amélioration suffisamment convaincante.
+
+## Dropout
+
+Technique de régularisation utilisée par certains réseaux neuronaux.
+
+## Weight Decay
+
+Pénalisation des poids trop importants d’un réseau.
+
+## Checkpoint
+
+Sauvegarde d’un modèle pendant ou après son entraînement.
+
+## Seed
+
+Valeur contrôlant certaines opérations aléatoires afin d’améliorer la reproductibilité.
+
+## Hash / SHA-256
+
+Empreinte numérique permettant d’identifier précisément un fichier ou dataset.
+
+## Drift
+
+Changement progressif des données ou du comportement d’un modèle.
+
+## Fail-Safe
+
+Comportement conservateur utilisé lorsqu’une condition anormale est détectée.
+
+Dans ce projet :
+
+le Fail-Safe doit généralement être NO TRADE ou CASH.
+
+---
+
+# 187. PRINCIPE DE LISIBILITÉ
+
+Tout terme technique affiché dans l’interface doit être :
+
+- compréhensible ;
+- expliqué par info-bulle si nécessaire ;
+- associé à son unité.
+
+Exemples :
+
+`ATR: $1.42`
+
+`Data Lag: 10 min / 2 bars`
+
+`Planned Risk: $250 / 0.25%`
+
+Éviter les valeurs sans contexte.
+
+---
+
+# 188. PRINCIPE D’EXPLICABILITÉ
+
+Le système doit être capable de répondre aux questions suivantes à partir de ses logs et fichiers :
+
+Pourquoi un signal a-t-il été produit ?
+
+Pourquoi aucun signal n’a-t-il été produit ?
+
+Quel modèle était actif ?
+
+Quelles données étaient disponibles ?
+
+Quel était leur retard ?
+
+Quelle taille aurait été prise ?
+
+Quel risque était prévu ?
+
+Pourquoi ce Challenger a-t-il été rejeté ?
+
+Pourquoi ce Champion a-t-il été choisi ?
+
+Quelle expérience a modifié ce paramètre ?
+
+---
+
+# 189. PRINCIPE DE NON-AUTO-TROMPERIE
+
+Ne jamais :
+
+- optimiser jusqu’à obtenir une courbe positive ;
+- ignorer les expériences négatives ;
+- sélectionner uniquement les meilleurs sous-échantillons ;
+- changer le protocole après avoir vu le Final Test ;
+- prétendre qu’une période déjà consultée est totalement hors échantillon ;
+- présenter un score comme une probabilité validée sans calibration ;
+- cacher les coûts ;
+- cacher les gaps ;
+- cacher les données manquantes ;
+- cacher la faiblesse statistique.
+
+---
+
+# 190. PRINCIPE FINAL DE DÉCISION
+
+Le système doit toujours pouvoir conclure :
+
+`NO ROBUST EDGE FOUND`
+
+ou :
+
+`NO ROBUST IMPROVEMENT FOUND`
+
+ou :
+
+`DATA INSUFFICIENT`
+
+ou :
+
+`CASH`
+
+Ces résultats sont parfaitement acceptables.
+
+Le système ne doit pas être récompensé simplement parce qu’il trouve une stratégie rentable historiquement.
+
+Il doit être récompensé pour avoir trouvé une solution :
+
+- causale ;
+- robuste ;
+- simple ;
+- reproductible ;
+- résistante aux coûts ;
+- résistante aux petites variations ;
+- suffisamment validée hors échantillon.
+
+---
+
+# 191. PRIORITÉ ABSOLUE DU PROJET
+
+Toujours respecter l’ordre suivant :
+
+1. CAUSALITÉ
+2. QUALITÉ DES DONNÉES
+3. ABSENCE DE FUITE
+4. ROBUSTESSE
+5. REPRODUCTIBILITÉ
+6. GESTION DU RISQUE
+7. SIMPLICITÉ
+8. EXPLICABILITÉ
+9. PERFORMANCE
+
+Si une stratégie gagne davantage mais viole un principe supérieur :
+
+la rejeter.
+
+---
+
+# 192. CONSIGNE FINALE
+
+À partir de mon ZIP V9 :
+
+1. audite réellement l’existant ;
+2. conserve les éléments valides ;
+3. construis V10 progressivement ;
+4. ajoute les protections décrites dans les quatre parties de ce prompt ;
+5. teste réellement le projet ;
+6. ne force jamais un résultat positif ;
+7. rends-moi un ZIP complet prêt à lancer localement.
+
+Si les données disponibles sont trop faibles :
+
+construis et valide l’architecture,
+
+mais marque clairement les performances :
+
+`DEVELOPMENT ONLY`
+
+et :
+
+`INSUFFICIENT DATA FOR RELIABLE TRADING CONCLUSION`.
+
+La V10 doit être conçue pour recevoir ensuite plusieurs années de données SPY 5 minutes sans devoir être réécrite.

@@ -1,0 +1,5 @@
+manual_promotion: true
+retraining_mode: off
+shadow_mode: true
+poll_seconds: 30
+stale_action: no_trade

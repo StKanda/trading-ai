@@ -1,0 +1,113 @@
+test_scaler_fits_train_only (test_v10.DLDataTests.test_scaler_fits_train_only) ... ok
+test_fresh_when_last_complete_present (test_v10.FreshnessTests.test_fresh_when_last_complete_present) ... ok
+test_stale_when_many_bars_behind (test_v10.FreshnessTests.test_stale_when_many_bars_behind) ... ok
+test_core_imports_do_not_require_torch (test_v10.OptionalDependencyTests.test_core_imports_do_not_require_torch) ... ok
+test_cycle_stops_after_no_improvement (test_v10.RegistryTests.test_cycle_stops_after_no_improvement) ... ok
+test_duplicate_is_detected (test_v10.RegistryTests.test_duplicate_is_detected) ... ok
+test_daily_limit_can_block (test_v10.RiskSizingTests.test_daily_limit_can_block) ... ok
+test_detailed_sizing_respects_risk_and_leverage (test_v10.RiskSizingTests.test_detailed_sizing_respects_risk_and_leverage) ... ok
+test_concentration_flags_single_winner (test_v10.RobustnessTests.test_concentration_flags_single_winner) ... ok
+test_gate_requires_trades_and_expectancy (test_v10.RobustnessTests.test_gate_requires_trades_and_expectancy) ... ok
+test_plateau_vs_peak (test_v10.RobustnessTests.test_plateau_vs_peak) ... ok
+test_decision_chart_contains_candles_volume_and_score (test_v101.DashboardV101Tests.test_decision_chart_contains_candles_volume_and_score) ... /mnt/data/v11_3_work/trading_ai_v11_3/trading_lab/data/providers.py:126: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7fe20fe49c60>
+  previous = close
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/v11_3_work/trading_ai_v11_3/trading_lab/data/providers.py:126: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7fe20fe49d50>
+  previous = close
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/v11_3_work/trading_ai_v11_3/trading_lab/data/providers.py:126: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7fe20fe49e40>
+  previous = close
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/v11_3_work/trading_ai_v11_3/trading_lab/data/providers.py:126: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7fe20fe49f30>
+  previous = close
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/v11_3_work/trading_ai_v11_3/trading_lab/data/providers.py:126: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7fe20fe4a020>
+  previous = close
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/v11_3_work/trading_ai_v11_3/trading_lab/data/providers.py:126: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7fe20fe4a110>
+  previous = close
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/v11_3_work/trading_ai_v11_3/trading_lab/data/providers.py:126: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7fe20fe4a200>
+  previous = close
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/v11_3_work/trading_ai_v11_3/trading_lab/data/providers.py:126: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7fe20fe4a2f0>
+  previous = close
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/v11_3_work/trading_ai_v11_3/trading_lab/data/providers.py:126: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7fe20fe4a3e0>
+  previous = close
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/v11_3_work/trading_ai_v11_3/trading_lab/data/providers.py:126: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7fe20fe4a4d0>
+  previous = close
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/v11_3_work/trading_ai_v11_3/trading_lab/data/providers.py:126: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7fe20fe4a5c0>
+  previous = close
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/v11_3_work/trading_ai_v11_3/trading_lab/data/providers.py:126: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7fe20fe4a6b0>
+  previous = close
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/v11_3_work/trading_ai_v11_3/trading_lab/data/providers.py:126: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7fe20fe4a7a0>
+  previous = close
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/v11_3_work/trading_ai_v11_3/trading_lab/data/providers.py:126: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7fe20fe4a890>
+  previous = close
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_runtime_state_is_symbol_scoped (test_v101.DashboardV101Tests.test_runtime_state_is_symbol_scoped) ... ok
+test_symbol_discovery_excludes_demo_validation (test_v101.DashboardV101Tests.test_symbol_discovery_excludes_demo_validation) ... ok
+test_30_minute_chart_is_supported (test_v102.DashboardV102Tests.test_30_minute_chart_is_supported) ... ok
+test_completed_bars_still_rejects_unsupported_interval (test_v102.DashboardV102Tests.test_completed_bars_still_rejects_unsupported_interval) ... ok
+test_probable_level_zones_add_shapes (test_v103.DashboardV103Tests.test_probable_level_zones_add_shapes) ... ok
+test_scroll_zoom_disabled_in_dashboard (test_v103.DashboardV103Tests.test_scroll_zoom_disabled_in_dashboard) ... ok
+test_trade_model_discovery (test_v103.DashboardV103Tests.test_trade_model_discovery) ... ok
+test_sequence_scalers_fit_train_only (test_v111_terminal.V111UtilityTests.test_sequence_scalers_fit_train_only) ... ok
+test_stop_priority_same_bar (test_v111_terminal.V111UtilityTests.test_stop_priority_same_bar) ... ok
+test_utility_targets_have_expected_columns (test_v111_terminal.V111UtilityTests.test_utility_targets_have_expected_columns) ... ok
+test_negative_validation_utility_means_no_trade (test_v112_terminal.V112SelectionTests.test_negative_validation_utility_means_no_trade) ... ok
+test_recenter_maps_selected_threshold_to_execution_threshold (test_v112_terminal.V112SelectionTests.test_recenter_maps_selected_threshold_to_execution_threshold) ... ok
+test_threshold_selected_only_on_positive_validation_utility (test_v112_terminal.V112SelectionTests.test_threshold_selected_only_on_positive_validation_utility) ... ok
+test_candidate_filter_is_prefix_invariant (test_v113_terminal.V113CandidateSetupTests.test_candidate_filter_is_prefix_invariant) ... ok
+test_candidate_filter_is_selective_and_boolean (test_v113_terminal.V113CandidateSetupTests.test_candidate_filter_is_selective_and_boolean) ... ok
+test_cli_wrapper_exists (test_v11_terminal.TerminalV11Tests.test_cli_wrapper_exists) ... ok
+test_doctor (test_v11_terminal.TerminalV11Tests.test_doctor) ... ok
+test_parse_dl_model (test_v11_terminal.TerminalV11Tests.test_parse_dl_model) ... ok
+test_partial_trailing_session_is_excluded (test_v11_terminal.TerminalV11Tests.test_partial_trailing_session_is_excluded) ... Snapshot pris en séance: 1 séance(s) de fin encore ouverte(s) exclue(s) du backtest.
+ok
+test_dedup_first_signal_is_never_replaced (test_v8.CausalityTests.test_dedup_first_signal_is_never_replaced) ... ok
+test_features_prefix_invariance (test_v8.CausalityTests.test_features_prefix_invariance) ... ok
+test_future_shock_changes_no_past_feature (test_v8.CausalityTests.test_future_shock_changes_no_past_feature) ... ok
+test_label_uses_next_open_and_30min_exit (test_v8.CausalityTests.test_label_uses_next_open_and_30min_exit) ... ok
+test_labels_no_overnight_and_unknown_not_zero (test_v8.CausalityTests.test_labels_no_overnight_and_unknown_not_zero) ... ok
+test_pivots_only_known_two_bars_later (test_v8.CausalityTests.test_pivots_only_known_two_bars_later) ... ok
+test_pretest_slice_excludes_all_final_prices (test_v8.CausalityTests.test_pretest_slice_excludes_all_final_prices) ... ok
+test_purge_and_predictions_future_invariant (test_v8.CausalityTests.test_purge_and_predictions_future_invariant) ... ok
+test_volume_reference_excludes_same_day_future (test_v8.CausalityTests.test_volume_reference_excludes_same_day_future) ... ok
+test_10min_alignment_and_incomplete_current (test_v8.DataTests.test_10min_alignment_and_incomplete_current) ... ok
+test_15min_never_crosses_session (test_v8.DataTests.test_15min_never_crosses_session) ... ok
+test_capture_time_does_not_complete_last_partial_bar (test_v8.DataTests.test_capture_time_does_not_complete_last_partial_bar) ... ok
+test_early_close_and_dst (test_v8.DataTests.test_early_close_and_dst) ... ok
+test_invalid_prices_and_naive_time_rejected (test_v8.DataTests.test_invalid_prices_and_naive_time_rejected) ... ok
+test_missing_bar_not_forward_filled (test_v8.DataTests.test_missing_bar_not_forward_filled) ... ok
+test_missing_entire_day_rejected (test_v8.DataTests.test_missing_entire_day_rejected) ... ok
+test_snapshot_roundtrip (test_v8.DataTests.test_snapshot_roundtrip) ... ok
+test_both_barriers_stop_first (test_v8.ExecutionTests.test_both_barriers_stop_first) ... ok
+test_close_before_end_and_no_overnight (test_v8.ExecutionTests.test_close_before_end_and_no_overnight) ... ok
+test_daily_loss_latches_until_next_session (test_v8.ExecutionTests.test_daily_loss_latches_until_next_session) ... ok
+test_daily_stop_blocks_later_signals (test_v8.ExecutionTests.test_daily_stop_blocks_later_signals) ... ok
+test_gap_exceeds_stop_budget (test_v8.ExecutionTests.test_gap_exceeds_stop_budget) ... ok
+test_leverage_is_cap_not_target (test_v8.ExecutionTests.test_leverage_is_cap_not_target) ... ok
+test_next_open_not_signal_close (test_v8.ExecutionTests.test_next_open_not_signal_close) ... ok
+test_no_trade_without_prediction (test_v8.ExecutionTests.test_no_trade_without_prediction) ... ok
+test_position_size_uses_previous_volume (test_v8.ExecutionTests.test_position_size_uses_previous_volume) ... ok
+test_roundtrip_costs_on_flat_prices (test_v8.ExecutionTests.test_roundtrip_costs_on_flat_prices) ... ok
+test_sharpe_uses_days_and_initial_drawdown (test_v8.ExecutionTests.test_sharpe_uses_days_and_initial_drawdown) ... ok
+test_http_graphic_all_timeframes (test_v8.InterfaceTests.test_http_graphic_all_timeframes) ... ok
+test_scan_and_chat (test_v8.InterfaceTests.test_scan_and_chat) ... ok
+test_unknown_symbol_and_cross_origin_rejected (test_v8.InterfaceTests.test_unknown_symbol_and_cross_origin_rejected) ... ok
+test_rule_prefix_invariance (test_v9.V9RulesTests.test_rule_prefix_invariance) ... ok
+test_rules_are_binary_and_named (test_v9.V9RulesTests.test_rules_are_binary_and_named) ... ok
+test_selection_can_choose_cash (test_v9.V9RulesTests.test_selection_can_choose_cash) ... ok
+
+----------------------------------------------------------------------
+Ran 65 tests in 20.582s
+
+OK

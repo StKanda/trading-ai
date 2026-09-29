@@ -1,0 +1,28 @@
+{
+  "version": "11.0-terminal",
+  "focus": "terminal-only research/backtest/deep-learning",
+  "tested": {
+    "unit_tests": 56,
+    "unit_tests_failed": 0,
+    "smoke_pipeline": "NVDA demo, 5m, MLP_12, 5 folds, economic backtest completed"
+  },
+  "features": [
+    "doctor command with PyTorch/CUDA detection",
+    "Yahoo snapshot or local CSV pipeline",
+    "chronological walk-forward with purge/embargo",
+    "RF/GB/LR/rules plus MLP/TCN in one OOS economic backtest",
+    "multi-seed DL score ensemble",
+    "checkpoint per fold/seed",
+    "same t+1 execution, costs, stops/targets, no overnight",
+    "cost stress +2/+5 bps per side",
+    "manual review gate; no automatic promotion",
+    "CSV/JSON artifacts for folds, training, predictions, trades and metrics"
+  ],
+  "limitations": [
+    "DEVELOPMENT ONLY",
+    "DL target is still fixed-horizon future net-return sign",
+    "scores are not calibrated probabilities",
+    "no broker connectivity or real orders",
+    "small datasets are insufficient for reliable edge claims"
+  ]
+}

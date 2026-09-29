@@ -1,0 +1,10 @@
+architecture: mlp
+context_bars: 24
+hidden_size: 64
+dropout: 0.2
+learning_rate: 0.001
+weight_decay: 0.0001
+batch_size: 64
+max_epochs: 40
+early_stopping_patience: 5
+seed: 42

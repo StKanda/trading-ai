@@ -1,0 +1,1301 @@
+# TRADING AI V10 — PROMPT MAÎTRE  
+## PARTIE 3/4 — POSITION SIZING, RISQUE, WORKERS, REPLAY, SHADOW MODE ET DATA FRESHNESS
+
+---
+
+# 76. POSITION SIZING
+
+Créer un module dédié :
+
+`src/risk/position_sizing.py`
+
+Son rôle est de calculer automatiquement le nombre théorique d’actions ou de contrats à prendre pour chaque signal.
+
+Le projet reste en PAPER ANALYSIS.
+
+Le module calcule une taille théorique mais ne transmet jamais d’ordre à un courtier.
+
+---
+
+# 77. TYPE D’INSTRUMENT
+
+Ne jamais supposer qu’une unité correspond toujours à un contrat.
+
+Pour SPY ETF :
+
+`instrument_type = ETF`
+
+`contract_multiplier = 1`
+
+La quantité correspond donc à un nombre d’actions.
+
+Si d’autres instruments sont ajoutés plus tard :
+
+- futures ;
+- options ;
+- CFD ;
+- autres produits ;
+
+leur multiplicateur doit être explicitement configuré.
+
+Ne jamais inventer un multiplicateur.
+
+---
+
+# 78. RISQUE PAR TRADE
+
+Ajouter :
+
+`risk_per_trade_pct`
+
+Exemples raisonnables de recherche :
+
+- 0.10 %
+- 0.25 %
+- 0.50 %
+- 1.00 %
+
+Ne pas choisir automatiquement la valeur qui maximise le rendement historique.
+
+Calcul :
+
+`risk_budget = current_equity × risk_per_trade_pct`
+
+Exemple :
+
+capital :
+
+100 000 $
+
+risk_per_trade :
+
+0.50 %
+
+budget de risque :
+
+500 $
+
+---
+
+# 79. RISQUE PAR UNITÉ
+
+Calculer :
+
+`price_risk = abs(entry_price - stop_price)`
+
+Puis :
+
+`unit_risk = price_risk × contract_multiplier + estimated_costs_per_unit`
+
+Les coûts doivent inclure au minimum :
+
+- commissions ;
+- slippage d’entrée ;
+- slippage de sortie.
+
+Ensuite :
+
+`quantity_by_risk = floor(risk_budget / unit_risk)`
+
+---
+
+# 80. CONTRAINTE DE LEVIER
+
+Avec levier 1 :
+
+`maximum_notional = current_equity`
+
+Pour SPY :
+
+`notional_per_unit = entry_price × contract_multiplier`
+
+Puis :
+
+`quantity_by_leverage = floor(maximum_notional / notional_per_unit)`
+
+Quantité finale :
+
+`quantity = min(quantity_by_risk, quantity_by_leverage)`
+
+Si :
+
+`quantity < 1`
+
+alors :
+
+`NO TRADE — POSITION TOO SMALL FOR RISK LIMIT`
+
+Ne jamais arrondir automatiquement à 1 si cela dépasse le risque autorisé.
+
+---
+
+# 81. CAPITAL ACTUEL
+
+Le sizing doit utiliser :
+
+`current_equity`
+
+et non le capital initial permanent.
+
+Il doit donc tenir compte de :
+
+- gains précédents ;
+- pertes précédentes ;
+- frais ;
+- slippage ;
+- drawdown.
+
+Après une série de pertes :
+
+la taille doit diminuer automatiquement.
+
+Après une hausse du capital :
+
+elle peut augmenter progressivement selon les règles définies.
+
+---
+
+# 82. BUDGET DE RISQUE JOURNALIER
+
+Ajouter :
+
+`max_daily_loss_pct`
+
+et calculer :
+
+`remaining_daily_risk`
+
+Avant chaque nouvelle position.
+
+Si le risque planifié du trade dépasse le budget quotidien restant :
+
+`NO TRADE — DAILY RISK LIMIT`
+
+Une fois la limite atteinte :
+
+aucun nouveau trade pour cette séance.
+
+---
+
+# 83. LIMITE DE NOMBRE DE TRADES
+
+Ajouter éventuellement :
+
+`max_trades_per_day`
+
+Objectif :
+
+éviter qu’un système dégradé multiplie les entrées.
+
+Cette valeur doit être définie avant le test final.
+
+---
+
+# 84. BUFFER DE RISQUE
+
+Prévoir :
+
+`risk_buffer_pct`
+
+ou :
+
+`stop_slippage_buffer`
+
+Exemple :
+
+risque théorique par action :
+
+1.00 $
+
+buffer :
+
+10 %
+
+risque utilisé pour le sizing :
+
+1.10 $
+
+Ce buffer permet un sizing plus conservateur.
+
+---
+
+# 85. STOP NON GARANTI
+
+Le stop ne doit jamais être considéré comme une garantie de perte maximale.
+
+Afficher séparément :
+
+`PLANNED RISK`
+
+et :
+
+`REALIZED RISK`
+
+Si un gap traverse le stop :
+
+la perte réalisée peut dépasser le budget planifié.
+
+Le backtest doit conserver cette réalité.
+
+---
+
+# 86. CONTRAINTES DE SIZING
+
+Prévoir :
+
+`max_position_notional_pct`
+
+`max_total_exposure_pct`
+
+`max_risk_per_trade_pct`
+
+`max_daily_loss_pct`
+
+`max_trades_per_day`
+
+`allow_fractional_shares`
+
+Pour SPY :
+
+`allow_fractional_shares = false`
+
+par défaut.
+
+---
+
+# 87. MÉTHODES DE SIZING
+
+Comparer éventuellement sur RESEARCH :
+
+1. taille fixe ;
+2. risque fixe en % du capital ;
+3. sizing ATR ;
+4. sizing basé sur volatilité.
+
+Conserver une méthode simple comme baseline.
+
+Ne pas utiliser Kelly Criterion agressivement.
+
+Si Kelly est étudié :
+
+- expérimental uniquement ;
+- fortement plafonné ;
+- jamais par défaut.
+
+---
+
+# 88. SORTIE DU POSITION SIZING
+
+Pour chaque LONG CANDIDATE afficher :
+
+Capital actuel
+
+Prix d’entrée
+
+Stop
+
+Distance stop
+
+Risque/trade
+
+Budget de risque
+
+Coûts estimés
+
+Quantité limitée par risque
+
+Quantité limitée par levier
+
+Quantité retenue
+
+Notional
+
+Planned Risk
+
+Planned Risk %
+
+Reward/Risk
+
+Daily Risk Remaining
+
+Exemple :
+
+`SIZE: 72 SPY`
+
+`NOTIONAL: $48,600`
+
+`PLANNED RISK: $247 / 0.25%`
+
+`DAILY RISK REMAINING: $603`
+
+---
+
+# 89. LEDGER DE SIZING
+
+Ajouter au ledger :
+
+- `equity_before_trade`
+- `risk_budget`
+- `entry_price`
+- `stop_price`
+- `risk_per_unit`
+- `quantity`
+- `notional_exposure`
+- `planned_risk`
+- `realized_pnl`
+- `realized_risk_pct`
+- `daily_risk_remaining`
+
+Le calcul doit utiliser uniquement les informations disponibles avant le trade.
+
+---
+
+# 90. STRESS TEST DU SIZING
+
+Tester :
+
+- double slippage ;
+- hausse des coûts ;
+- gap au-delà du stop ;
+- forte volatilité ;
+- baisse du capital ;
+- série de pertes ;
+- plusieurs trades dans la même séance.
+
+Vérifier que le système réduit correctement sa taille.
+
+---
+
+# 91. LIVE WORKER
+
+Créer un processus local séparé.
+
+Par exemple :
+
+`python worker.py`
+
+ou :
+
+`python -m src.live.worker`
+
+Le worker live doit faire uniquement :
+
+1. détecter une nouvelle bougie ;
+2. vérifier qu’elle est complète ;
+3. vérifier sa fraîcheur ;
+4. calculer les features ;
+5. charger le Champion ;
+6. produire l’inférence ;
+7. calculer le signal ;
+8. calculer la taille théorique ;
+9. sauvegarder le résultat ;
+10. mettre à jour l’interface.
+
+---
+
+# 92. LE LIVE WORKER NE DOIT PAS
+
+Le Live Worker ne doit jamais :
+
+- entraîner ;
+- optimiser ;
+- modifier les paramètres ;
+- changer le modèle ;
+- promouvoir un Challenger ;
+- modifier le risque ;
+- élargir les plages de recherche ;
+- passer un ordre.
+
+Inference uniquement.
+
+---
+
+# 93. RESEARCH WORKER
+
+Créer un processus séparé :
+
+`python research_worker.py`
+
+Il peut :
+
+- analyser les erreurs ;
+- générer des hypothèses ;
+- entraîner des Challengers ;
+- lancer des stress tests ;
+- écrire des rapports ;
+- mettre à jour le registre des expériences.
+
+Il peut fonctionner :
+
+- manuellement ;
+- la nuit ;
+- le week-end ;
+- selon une fréquence configurable.
+
+---
+
+# 94. RETRAINING
+
+Prévoir :
+
+`retraining_mode`
+
+avec :
+
+- `off`
+- `manual`
+- `daily`
+- `weekly`
+
+Ne jamais réentraîner toutes les 5 minutes.
+
+Le retraining utilise uniquement les données disponibles au moment où il commence.
+
+Enregistrer :
+
+- date ;
+- période ;
+- dataset hash ;
+- modèle ;
+- seed ;
+- paramètres ;
+- résultats.
+
+---
+
+# 95. AUCUNE PROMOTION SILENCIEUSE
+
+Le Research Worker peut produire :
+
+`CANDIDATE FOR PROMOTION`
+
+Mais le Live Worker continue à utiliser le Champion actuel.
+
+Par défaut :
+
+`manual_promotion = true`
+
+---
+
+# 96. SHADOW MODE
+
+Créer un mode :
+
+`SHADOW`
+
+Dans ce mode :
+
+- les signaux sont produits en temps réel ;
+- aucun ordre n’est exécuté ;
+- les résultats théoriques sont enregistrés ;
+- Champion et Challengers peuvent être comparés sur des données réellement arrivées après leur entraînement.
+
+Le Shadow Mode sert à construire un historique prospectif propre.
+
+---
+
+# 97. SHADOW PERFORMANCE
+
+Enregistrer pour chaque modèle :
+
+- signal ;
+- timestamp ;
+- prix disponible ;
+- entrée théorique ;
+- sortie théorique ;
+- PnL ;
+- coûts ;
+- latence ;
+- fraîcheur des données.
+
+Ne pas recalculer rétroactivement ces résultats comme si le modèle avait disposé d’informations qu’il n’avait pas réellement reçues.
+
+---
+
+# 98. HISTORICAL REPLAY
+
+Créer :
+
+`python replay.py`
+
+Le replay doit rejouer une séance :
+
+bougie par bougie
+
+dans l’ordre réel.
+
+À chaque étape :
+
+le système ne voit que les données disponibles jusqu’à ce moment.
+
+Objectif :
+
+simuler exactement le fonctionnement du worker live.
+
+---
+
+# 99. REPLAY PARITY
+
+Comparer :
+
+Backtest
+
+vs
+
+Replay.
+
+Pour un même instant :
+
+- mêmes features ;
+- même modèle ;
+- même score ;
+- même signal ;
+- même sizing.
+
+Créer un test :
+
+`replay_parity_test`
+
+Toute divergence importante doit être considérée comme un bug.
+
+---
+
+# 100. REPLAY AVEC LATENCE
+
+Prévoir deux modes :
+
+`IDEAL_DATA`
+
+et :
+
+`RECORDED_LATENCY`
+
+## IDEAL_DATA
+
+Suppose que la bougie est disponible immédiatement après sa clôture.
+
+## RECORDED_LATENCY
+
+Reproduit le délai réellement observé lors de la collecte.
+
+Objectif :
+
+mesurer l’impact réel du retard de données.
+
+---
+
+# 101. DATA FRESHNESS
+
+Créer un module dédié :
+
+`src/data/data_freshness.py`
+
+Le système ne doit jamais supposer que la dernière ligne téléchargée est fraîche.
+
+Calculer :
+
+- heure actuelle ;
+- heure de marché ;
+- timestamp de la dernière bougie reçue ;
+- timestamp attendu de la dernière bougie complète ;
+- retard.
+
+---
+
+# 102. DERNIÈRE BOUGIE COMPLÈTE
+
+Pour un timeframe 5 minutes :
+
+ne jamais utiliser une bougie encore en formation.
+
+Exemple :
+
+heure actuelle :
+
+10:33 ET.
+
+Bougie :
+
+10:30–10:35
+
+encore incomplète.
+
+Dernière bougie utilisable :
+
+10:25–10:30.
+
+Créer une fonction unique :
+
+`last_expected_complete_bar()`
+
+---
+
+# 103. TIMEZONE MARCHÉ
+
+Utiliser :
+
+`America/New_York`
+
+comme timezone de référence pour SPY.
+
+Gérer :
+
+- EST ;
+- EDT ;
+- changement d’heure ;
+- jours fériés ;
+- early close.
+
+Ne jamais utiliser naïvement l’heure locale du PC comme horloge de marché.
+
+---
+
+# 104. CALENDRIER DE MARCHÉ
+
+Utiliser un calendrier NYSE approprié pour déterminer :
+
+- ouverture ;
+- clôture ;
+- jours fériés ;
+- early close ;
+- nombre attendu de bougies.
+
+Une date présente dans un calendrier sans bougie de marché ne doit pas être utilisée comme prix.
+
+---
+
+# 105. STATUT DE FRAÎCHEUR
+
+Créer une configuration :
+
+`data_freshness.yaml`
+
+Exemple :
+
+`fresh_tolerance_minutes`
+
+`warning_tolerance_minutes`
+
+`hard_stop_minutes`
+
+Statuts :
+
+`FRESH`
+
+`WARNING`
+
+`DELAYED`
+
+`STALE`
+
+Exemple :
+
+0–7 min :
+
+FRESH
+
+8–12 min :
+
+WARNING
+
+13–20 min :
+
+DELAYED
+
+>20 min :
+
+STALE
+
+Adapter ces valeurs au timeframe.
+
+---
+
+# 106. FAIL-SAFE FRAÎCHEUR
+
+Si :
+
+`STALE`
+
+alors :
+
+`NO TRADE — STALE MARKET DATA`
+
+Si le système ne sait pas si la donnée est fiable :
+
+`NO TRADE — DATA QUALITY`
+
+La sécurité doit primer sur la génération d’un signal.
+
+---
+
+# 107. RETARD YAHOO
+
+Yahoo/yfinance peut fournir des données intraday :
+
+- retardées ;
+- momentanément absentes ;
+- incomplètes ;
+- corrigées après coup.
+
+Ne jamais supposer qu’un téléchargement réussi signifie :
+
+« temps réel ».
+
+Mesurer réellement le retard.
+
+---
+
+# 108. MARKET TIMESTAMP VS FETCHED_AT
+
+Chaque collecte doit distinguer :
+
+`market_timestamp`
+
+et :
+
+`fetched_at`
+
+Exemple :
+
+`market_timestamp = 10:35 ET`
+
+`fetched_at = 10:47 ET`
+
+Cela signifie que la bougie a été reçue 12 minutes après son instant de marché.
+
+Ne jamais réécrire rétroactivement :
+
+`generated_at = 10:35`
+
+si le système n’a reçu la donnée qu’à 10:47.
+
+---
+
+# 109. LATENCE RÉELLE
+
+Créer :
+
+`latency_log.csv`
+
+avec :
+
+- `bar_closed_at`
+- `provider_available_at` si connu
+- `worker_received_at`
+- `features_completed_at`
+- `signal_generated_at`
+- `total_latency_ms`
+
+Mesurer la chaîne complète.
+
+---
+
+# 110. MULTI-PROVIDER DATA LAYER
+
+Créer une abstraction :
+
+`MarketDataProvider`
+
+Exemples de providers possibles :
+
+- `YahooProvider`
+- `LocalCSVProvider`
+- fournisseurs supplémentaires optionnels
+
+Architecture extensible pour ajouter plus tard :
+
+- Polygon ;
+- Alpaca Data ;
+- Databento ;
+- Interactive Brokers Data ;
+- autre source.
+
+Une source de données broker ne doit jamais impliquer l’exécution d’ordres.
+
+---
+
+# 111. PROVIDER PRINCIPAL / FALLBACK
+
+Configuration :
+
+`primary_provider`
+
+`fallback_provider`
+
+Exemple :
+
+Primary :
+
+Yahoo.
+
+Fallback :
+
+source secondaire configurée.
+
+Si Yahoo est trop retardé :
+
+1. détecter le retard ;
+2. interroger le fallback ;
+3. contrôler les données ;
+4. utiliser le fallback uniquement s’il passe les vérifications.
+
+---
+
+# 112. NE PAS FUSIONNER AVEUGLÉMENT LES SOURCES
+
+Si deux providers donnent des valeurs différentes :
+
+comparer :
+
+- timestamp ;
+- Open ;
+- High ;
+- Low ;
+- Close ;
+- Volume.
+
+Créer des tolérances.
+
+Si désaccord important :
+
+`DATA PROVIDER DISAGREEMENT`
+
+Puis :
+
+NO TRADE
+
+plutôt que choisir arbitrairement une valeur.
+
+---
+
+# 113. PROVENANCE DES DONNÉES
+
+Chaque batch doit conserver :
+
+- provider ;
+- fetched_at ;
+- market_timestamp ;
+- timezone ;
+- timeframe ;
+- synthetic ;
+- freshness_status ;
+- lag_seconds.
+
+Pouvoir savoir d’où vient chaque donnée utilisée pour un signal.
+
+---
+
+# 114. CACHE LOCAL
+
+Créer un cache local.
+
+Exemple :
+
+`data/cache/SPY/5m/`
+
+Objectifs :
+
+- conserver les données déjà validées ;
+- éviter de retélécharger l’historique complet ;
+- limiter la dépendance au provider ;
+- permettre une reprise après coupure.
+
+---
+
+# 115. MISE À JOUR INCRÉMENTALE
+
+À chaque cycle :
+
+1. lire `last_validated_timestamp` ;
+2. télécharger seulement une petite fenêtre récente ;
+3. garder un chevauchement ;
+4. comparer les bougies communes ;
+5. détecter les révisions ;
+6. ajouter les nouvelles bougies ;
+7. lancer l’audit ;
+8. générer éventuellement un signal.
+
+---
+
+# 116. PAS DE FORWARD-FILL OHLCV
+
+Si une bougie attendue manque :
+
+ne jamais inventer :
+
+- Open ;
+- High ;
+- Low ;
+- Close ;
+- Volume.
+
+Ne pas forward-fill les prix comme si une bougie existait.
+
+Marquer :
+
+`MISSING BAR`
+
+---
+
+# 117. DATA REVISION
+
+Un provider peut modifier une bougie après sa première publication.
+
+Créer :
+
+`data_revisions.csv`
+
+avec :
+
+- timestamp ;
+- ancienne valeur ;
+- nouvelle valeur ;
+- provider ;
+- detected_at.
+
+Aucune correction silencieuse.
+
+---
+
+# 118. HISTORICAL DATA VS OBSERVED LIVE DATA
+
+Faire la distinction entre :
+
+`historical_market_data`
+
+et :
+
+`observed_live_data`
+
+Les données historiques téléchargées plus tard peuvent être propres et corrigées.
+
+Mais elles ne représentent pas forcément ce qui était réellement disponible au moment du signal.
+
+Cette distinction est indispensable pour juger la vraie exploitabilité.
+
+---
+
+# 119. DATA FEED STATUS DANS LE SIGNAL
+
+Chaque signal doit enregistrer :
+
+- provider ;
+- data_timestamp ;
+- generated_at ;
+- data_age_seconds ;
+- lag_bars ;
+- freshness_status.
+
+Exemple :
+
+`PROVIDER: Yahoo`
+
+`LAST BAR: 10:35 ET`
+
+`DATA AGE: 2m 14s`
+
+`LAG: 0 bars`
+
+`STATUS: FRESH`
+
+---
+
+# 120. PROVIDER HEALTH
+
+Créer un état de santé par provider.
+
+Mesurer :
+
+- taux d’erreur ;
+- retard moyen ;
+- retard maximum ;
+- nombre de bougies manquantes ;
+- nombre de révisions ;
+- nombre de désaccords.
+
+Statuts possibles :
+
+`HEALTHY`
+
+`DEGRADED`
+
+`UNAVAILABLE`
+
+---
+
+# 121. FALLBACK FAIL-SAFE
+
+Si :
+
+Primary indisponible
+
+et
+
+Fallback indisponible
+
+alors :
+
+`NO TRADE — NO VALID DATA FEED`
+
+Le système ne doit jamais continuer avec de vieilles données sans avertissement.
+
+---
+
+# 122. DRIFT DES DONNÉES
+
+Suivre progressivement :
+
+- volatilité ;
+- volume ;
+- distributions des features ;
+- distance VWAP ;
+- ATR ;
+- scores.
+
+Détecter un changement important par rapport aux données d’entraînement.
+
+Statut :
+
+`DATA DRIFT DETECTED`
+
+---
+
+# 123. MODEL DRIFT
+
+Suivre :
+
+- taux de signaux ;
+- performance récente ;
+- expectancy récente ;
+- taux de réussite ;
+- distribution des scores ;
+- erreurs.
+
+Si le comportement du modèle change fortement :
+
+`MODEL DRIFT DETECTED`
+
+Le système peut repasser à :
+
+CASH / NO TRADE
+
+en attendant une analyse.
+
+---
+
+# 124. PAS DE RETRAINING AUTOMATIQUE IMMÉDIAT SUR DRIFT
+
+Détecter un drift ne doit pas immédiatement déclencher :
+
+« réentraîner jusqu’à ce que ça remarche ».
+
+Le système doit :
+
+1. détecter ;
+2. enregistrer ;
+3. éventuellement désactiver les signaux ;
+4. créer une hypothèse de recherche ;
+5. attendre le Research Worker.
+
+Cela évite une boucle d’auto-adaptation incontrôlée.
+
+---
+
+# 125. LIMITES DE RESSOURCES
+
+Le Research Worker doit respecter des limites configurables :
+
+- CPU threads ;
+- RAM si possible ;
+- GPU on/off ;
+- GPU memory ;
+- runtime ;
+- nombre de jobs parallèles.
+
+Le worker ne doit pas monopoliser indéfiniment le PC.
+
+---
+
+# 126. REPRISE APRÈS CRASH
+
+Prévoir :
+
+- checkpoint ;
+- journal ;
+- état du worker ;
+- dernière expérience ;
+- dernière bougie ;
+- dernier modèle valide.
+
+Après un crash :
+
+reprendre proprement.
+
+Ne jamais écraser un Champion valide par un modèle incomplet.
+
+---
+
+# 127. ÉTAT DES WORKERS
+
+Créer un fichier ou stockage d’état.
+
+Exemple :
+
+`runtime_state.json`
+
+avec :
+
+- live_worker_status ;
+- research_worker_status ;
+- last_bar ;
+- last_signal ;
+- active_model ;
+- current_experiment ;
+- data_provider ;
+- freshness_status.
+
+---
+
+# 128. GLOSSAIRE — PARTIE 3
+
+Ajouter ces définitions au README.
+
+## Position Sizing
+
+Méthode utilisée pour déterminer combien d’actions ou contrats prendre.
+
+## Risk Per Trade
+
+Pourcentage du capital que le système accepte théoriquement de risquer sur un trade.
+
+## Risk Budget
+
+Montant monétaire correspondant au risque autorisé.
+
+## Contract Multiplier
+
+Valeur convertissant un mouvement de prix en impact monétaire pour une unité de l’instrument.
+
+Pour SPY ETF :
+
+1.
+
+## Notional Exposure
+
+Valeur totale de la position.
+
+Prix × quantité.
+
+## Planned Risk
+
+Perte estimée jusqu’au stop, avant éventuel gap extrême.
+
+## Realized Risk
+
+Perte réellement observée.
+
+Elle peut dépasser le Planned Risk.
+
+## Risk Buffer
+
+Marge conservatrice ajoutée au risque estimé.
+
+## Daily Loss Limit
+
+Perte journalière maximale autorisée avant arrêt des nouvelles entrées.
+
+## Live Worker
+
+Processus qui traite les nouvelles bougies et produit des signaux.
+
+Il ne s’entraîne pas.
+
+## Research Worker
+
+Processus qui mène les expériences et entraîne les Challengers.
+
+## Retraining
+
+Nouvel entraînement d’un modèle sur les données disponibles à une date donnée.
+
+## Shadow Mode
+
+Mode prospectif sans ordre réel dans lequel les signaux sont enregistrés pour évaluer leur comportement futur.
+
+## Replay
+
+Simulation chronologique bougie par bougie du comportement du système.
+
+## Replay Parity
+
+Vérification que Replay, Backtest et Live produisent les mêmes calculs pour le même instant.
+
+## Data Freshness
+
+Mesure de l’ancienneté des données reçues.
+
+## Data Lag
+
+Retard entre la donnée attendue et la donnée reçue.
+
+## Stale Data
+
+Données trop anciennes pour être considérées comme représentatives du marché actuel.
+
+## Market Timestamp
+
+Heure à laquelle la bougie appartient réellement sur le marché.
+
+## Fetched At
+
+Heure à laquelle le système a reçu ou téléchargé la donnée.
+
+## Provider
+
+Source fournissant les données de marché.
+
+## Fallback Provider
+
+Source secondaire utilisée si la source principale est défaillante.
+
+## Incremental Update
+
+Téléchargement uniquement des nouvelles données ou d’une petite fenêtre récente.
+
+## Data Revision
+
+Modification ultérieure d’une donnée déjà publiée.
+
+## Missing Bar
+
+Bougie attendue mais absente.
+
+Elle ne doit jamais être fabriquée artificiellement.
+
+## Latency
+
+Temps entre la clôture d’une bougie et la disponibilité effective du signal.
+
+## Data Drift
+
+Changement statistique des données d’entrée par rapport à la période d’entraînement.
+
+## Model Drift
+
+Dégradation ou changement du comportement du modèle au fil du temps.
+
+La PARTIE 4 terminera le prompt avec :
+
+- interface Streamlit ;
+- dashboard ;
+- Research Lab ;
+- métriques ;
+- graphiques ;
+- UX ;
+- tests automatisés ;
+- structure du projet ;
+- scripts ;
+- livrables ;
+- validation finale ;
+- glossaire général complémentaire ;
+- règles finales de livraison.

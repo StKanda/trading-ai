@@ -1,0 +1,7 @@
+Trading AI V12 verification
+- pytest collection: 75 tests collected
+- targeted V11.3.1/V11.3.2/V11.4 + V12 regression: 10 passed
+- V12 unit tests: 2 passed
+- compileall trading_lab: OK
+- CLI help: alpaca-download, --train-sessions, --fold-sessions present
+Note: live Alpaca download is intentionally not executed in the build environment because credentials are never embedded in artifacts.

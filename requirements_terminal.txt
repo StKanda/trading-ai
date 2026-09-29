@@ -1,0 +1,2 @@
+-r requirements_market.txt
+torch>=2.10,<3
