@@ -77,6 +77,14 @@ def _subset_sessions(bars: pd.DataFrame, max_sessions: int | None) -> pd.DataFra
     return out
 
 
+def _walkforward_fold_starts(session_count: int, train_sessions: int, fold_sessions: int,
+                             max_folds: int | None = None):
+    if max_folds is not None and max_folds < 1:
+        raise ValueError("max_folds doit être supérieur ou égal à 1.")
+    starts = range(train_sessions, session_count, fold_sessions)
+    return starts if max_folds is None else starts[:max_folds]
+
+
 def _dl_fold_predict(features, labels, train_mask, valid_mask, model_name, seeds, epochs, patience,
                      checkpoint_root: Path, fold_no: int):
     try:
@@ -679,7 +687,8 @@ def unified_walkforward(snapshot, cfg: AppConfig, out_dir: Path, timeframe: int 
                         dl_models=("MLP_12", "MLP_24", "TCN_12", "TCN_24"),
                         seeds=(42,), epochs=20, patience=4,
                         include_classic=True, include_rules=True,
-                        max_sessions=None, dl_objective="direction", start_date=None, end_date=None):
+                        max_sessions=None, dl_objective="direction", start_date=None, end_date=None,
+                        max_folds: int | None = None):
     if timeframe not in (5, 10, 15):
         raise ValueError("Le moteur de backtest supporte 5, 10 ou 15 minutes.")
     out = make_output(out_dir)
@@ -727,7 +736,9 @@ def unified_walkforward(snapshot, cfg: AppConfig, out_dir: Path, timeframe: int 
     checkpoint_root = out / "checkpoints"
     fold_no = 0
 
-    for first in range(cfg.research.train_sessions, len(sessions), cfg.research.fold_sessions):
+    for first in _walkforward_fold_starts(
+        len(sessions), cfg.research.train_sessions, cfg.research.fold_sessions, max_folds
+    ):
         days = sessions[first:first + cfg.research.fold_sessions]
         if not len(days):
             continue
@@ -1102,7 +1113,7 @@ def run_terminal_pipeline(symbol: str, out_dir: Path, data_dir: Path | None = No
                           timeframe=5, dl_models=("MLP_12", "MLP_24", "TCN_12", "TCN_24"),
                           seeds=(42,), epochs=20, patience=4, config_path: Path | None = None,
                           max_sessions=None, dl_objective="direction", train_sessions=None, fold_sessions=None,
-                          start_date=None, end_date=None):
+                          start_date=None, end_date=None, max_folds: int | None = None):
     cfg = AppConfig.load(config_path if config_path and Path(config_path).exists() else None)
     if train_sessions is not None or fold_sessions is not None:
         rc = replace(cfg.research,
@@ -1126,6 +1137,7 @@ def run_terminal_pipeline(symbol: str, out_dir: Path, data_dir: Path | None = No
         snapshot, cfg, run_root, timeframe=timeframe, dl_models=tuple(dl_models), seeds=tuple(seeds),
         epochs=epochs, patience=patience, include_classic=True, include_rules=True,
         max_sessions=max_sessions, dl_objective=dl_objective, start_date=start_date, end_date=end_date,
+        max_folds=max_folds,
     )
 
 

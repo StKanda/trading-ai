@@ -5,7 +5,9 @@ from pathlib import Path
 
 from trading_lab.data.market import Snapshot
 
-from trading_lab.terminal_pipeline import _parse_dl_model, _closed_session_snapshot, doctor
+from trading_lab.terminal_pipeline import (
+    _parse_dl_model, _closed_session_snapshot, _walkforward_fold_starts, doctor,
+)
 
 
 class TerminalV11Tests(unittest.TestCase):
@@ -38,6 +40,30 @@ class TerminalV11Tests(unittest.TestCase):
     def test_cli_wrapper_exists(self):
         self.assertTrue(Path("trading-ai").exists())
         self.assertTrue(Path("V11_TERMINAL_README.md").exists())
+
+    def test_max_folds_limits_only_the_number_of_existing_windows(self):
+        expected = [10, 20, 30, 40, 50]
+        self.assertEqual(list(_walkforward_fold_starts(55, 10, 10)), expected)
+        self.assertEqual(list(_walkforward_fold_starts(55, 10, 10, 2)), expected[:2])
+        self.assertEqual(list(_walkforward_fold_starts(55, 10, 10, 10)), expected)
+        with self.assertRaises(ValueError):
+            _walkforward_fold_starts(55, 10, 10, 0)
+
+    def test_max_folds_is_forwarded_by_both_walkforward_commands(self):
+        from unittest.mock import patch
+        from trading_lab.cli import main
+
+        commands = (
+            (["pipeline", "--symbol", "NVDA", "--data", "snapshot", "--out", "out", "--max-folds", "2"], 2),
+            (["backtest-dl", "--symbol", "NVDA", "--data", "snapshot", "--out", "out", "--max-folds", "3"], 3),
+        )
+        with patch("trading_lab.cli.AppConfig.load"), \
+                patch("trading_lab.terminal_pipeline.run_terminal_pipeline") as run_pipeline:
+            for argv, expected in commands:
+                with self.subTest(command=argv[0]):
+                    main(argv)
+                    self.assertEqual(run_pipeline.call_args.kwargs["max_folds"], expected)
+                    run_pipeline.reset_mock()
 
 
 if __name__ == "__main__":

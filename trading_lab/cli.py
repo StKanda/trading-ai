@@ -9,6 +9,16 @@ from .service import LabService
 from .web.server import serve
 
 
+def _positive_int(value):
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("La valeur doit être un entier positif.") from exc
+    if parsed < 1:
+        raise argparse.ArgumentTypeError("La valeur doit être supérieure ou égale à 1.")
+    return parsed
+
+
 def main(argv=None):
     root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description="Trading AI V12.1.2 Terminal : historique Alpaca SIP + re-clean local + backtesting/DL, aucune exécution broker.")
@@ -78,6 +88,7 @@ def main(argv=None):
     pipe.add_argument("--max-sessions", type=int, default=None, help="Limiter aux N dernières séances (debug uniquement)")
     pipe.add_argument("--train-sessions", type=int, default=None, help="V12: séances minimales avant le premier fold (ex: 504)")
     pipe.add_argument("--fold-sessions", type=int, default=None, help="V12: taille OOS de chaque fold (ex: 20)")
+    pipe.add_argument("--max-folds", type=_positive_int, default=None, help="Limiter le walk-forward aux N premiers folds")
     pipe.add_argument("--start-date", type=str, default=None, help="V12.1.3: première séance incluse (YYYY-MM-DD)")
     pipe.add_argument("--end-date", type=str, default=None, help="V12.1.3: dernière séance incluse (YYYY-MM-DD)")
     pipe.add_argument("--out", type=Path, required=True)
@@ -91,6 +102,7 @@ def main(argv=None):
     btdl.add_argument("--epochs", type=int, default=20)
     btdl.add_argument("--patience", type=int, default=4)
     btdl.add_argument("--dl-objective", choices=("direction","utility","economic"), default="economic")
+    btdl.add_argument("--max-folds", type=_positive_int, default=None, help="Limiter le walk-forward aux N premiers folds")
     btdl.add_argument("--out", type=Path, required=True)
 
     args = parser.parse_args(argv)
@@ -162,14 +174,14 @@ def main(argv=None):
                 dl_models=args.dl_models, seeds=args.seeds, epochs=args.epochs, patience=args.patience,
                 config_path=args.config, max_sessions=args.max_sessions, dl_objective=args.dl_objective,
                 train_sessions=args.train_sessions, fold_sessions=args.fold_sessions,
-                start_date=args.start_date, end_date=args.end_date
+                start_date=args.start_date, end_date=args.end_date, max_folds=args.max_folds
             )
         elif args.command == "backtest-dl":
             from .terminal_pipeline import run_terminal_pipeline
             run_terminal_pipeline(
                 args.symbol, args.out, data_dir=args.data, source="local", timeframe=args.timeframe,
                 dl_models=args.models, seeds=args.seeds, epochs=args.epochs, patience=args.patience,
-                config_path=args.config, dl_objective=args.dl_objective
+                config_path=args.config, dl_objective=args.dl_objective, max_folds=args.max_folds
             )
     except (ValueError, FileNotFoundError, RuntimeError, ImportError, OSError) as exc:
         print(f"Erreur : {exc}", file=sys.stderr)
