@@ -54,8 +54,10 @@ class TerminalV11Tests(unittest.TestCase):
         from trading_lab.cli import main
 
         commands = (
-            (["pipeline", "--symbol", "NVDA", "--data", "snapshot", "--out", "out", "--max-folds", "2"], 2),
-            (["backtest-dl", "--symbol", "NVDA", "--data", "snapshot", "--out", "out", "--max-folds", "3"], 3),
+                        (["pipeline", "--symbol", "NVDA", "--data", "snapshot", "--out", "out", "--max-folds", "2",
+                            "--economic-validation-sessions", "8"], 2),
+                        (["backtest-dl", "--symbol", "NVDA", "--data", "snapshot", "--out", "out", "--max-folds", "3",
+                            "--economic-validation-sessions", "8"], 3),
         )
         with patch("trading_lab.cli.AppConfig.load"), \
                 patch("trading_lab.terminal_pipeline.run_terminal_pipeline") as run_pipeline:
@@ -63,7 +65,18 @@ class TerminalV11Tests(unittest.TestCase):
                 with self.subTest(command=argv[0]):
                     main(argv)
                     self.assertEqual(run_pipeline.call_args.kwargs["max_folds"], expected)
+                    self.assertEqual(run_pipeline.call_args.kwargs["economic_validation_sessions"], 8)
                     run_pipeline.reset_mock()
+
+    def test_cli_rejects_economic_validation_sessions_below_two(self):
+        from contextlib import redirect_stderr
+        from io import StringIO
+        from trading_lab.cli import main
+
+        with redirect_stderr(StringIO()), self.assertRaises(SystemExit) as raised:
+            main(["pipeline", "--symbol", "NVDA", "--data", "snapshot", "--out", "out",
+                  "--economic-validation-sessions", "1"])
+        self.assertEqual(raised.exception.code, 2)
 
 
 if __name__ == "__main__":

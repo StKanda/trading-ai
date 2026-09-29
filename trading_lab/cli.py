@@ -19,6 +19,16 @@ def _positive_int(value):
     return parsed
 
 
+def _at_least_two_int(value):
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("La valeur doit être un entier supérieur ou égal à 2.") from exc
+    if parsed < 2:
+        raise argparse.ArgumentTypeError("La valeur doit être supérieure ou égale à 2.")
+    return parsed
+
+
 def main(argv=None):
     root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description="Trading AI V12.1.2 Terminal : historique Alpaca SIP + re-clean local + backtesting/DL, aucune exécution broker.")
@@ -89,6 +99,8 @@ def main(argv=None):
     pipe.add_argument("--train-sessions", type=int, default=None, help="V12: séances minimales avant le premier fold (ex: 504)")
     pipe.add_argument("--fold-sessions", type=int, default=None, help="V12: taille OOS de chaque fold (ex: 20)")
     pipe.add_argument("--max-folds", type=_positive_int, default=None, help="Limiter le walk-forward aux N premiers folds")
+    pipe.add_argument("--economic-validation-sessions", type=_at_least_two_int, default=None,
+                      help="Séances de validation DL économique (défaut historique: 2 à 4)")
     pipe.add_argument("--start-date", type=str, default=None, help="V12.1.3: première séance incluse (YYYY-MM-DD)")
     pipe.add_argument("--end-date", type=str, default=None, help="V12.1.3: dernière séance incluse (YYYY-MM-DD)")
     pipe.add_argument("--out", type=Path, required=True)
@@ -103,6 +115,8 @@ def main(argv=None):
     btdl.add_argument("--patience", type=int, default=4)
     btdl.add_argument("--dl-objective", choices=("direction","utility","economic"), default="economic")
     btdl.add_argument("--max-folds", type=_positive_int, default=None, help="Limiter le walk-forward aux N premiers folds")
+    btdl.add_argument("--economic-validation-sessions", type=_at_least_two_int, default=None,
+                      help="Séances de validation DL économique (défaut historique: 2 à 4)")
     btdl.add_argument("--out", type=Path, required=True)
 
     args = parser.parse_args(argv)
@@ -174,14 +188,16 @@ def main(argv=None):
                 dl_models=args.dl_models, seeds=args.seeds, epochs=args.epochs, patience=args.patience,
                 config_path=args.config, max_sessions=args.max_sessions, dl_objective=args.dl_objective,
                 train_sessions=args.train_sessions, fold_sessions=args.fold_sessions,
-                start_date=args.start_date, end_date=args.end_date, max_folds=args.max_folds
+                start_date=args.start_date, end_date=args.end_date, max_folds=args.max_folds,
+                economic_validation_sessions=args.economic_validation_sessions,
             )
         elif args.command == "backtest-dl":
             from .terminal_pipeline import run_terminal_pipeline
             run_terminal_pipeline(
                 args.symbol, args.out, data_dir=args.data, source="local", timeframe=args.timeframe,
                 dl_models=args.models, seeds=args.seeds, epochs=args.epochs, patience=args.patience,
-                config_path=args.config, dl_objective=args.dl_objective, max_folds=args.max_folds
+                config_path=args.config, dl_objective=args.dl_objective, max_folds=args.max_folds,
+                economic_validation_sessions=args.economic_validation_sessions,
             )
     except (ValueError, FileNotFoundError, RuntimeError, ImportError, OSError) as exc:
         print(f"Erreur : {exc}", file=sys.stderr)

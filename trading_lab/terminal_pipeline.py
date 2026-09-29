@@ -446,11 +446,22 @@ def _economic_score(frame: pd.DataFrame, pnl_scale: float) -> pd.Series:
     return pd.Series(1.0/(1.0+np.exp(-z)), index=frame.index, name="EconomicScore")
 
 
-def _inner_masks_for_economic(bars, features, economic_labels, outer_train_mask, timeframe, research, candidate_mask):
+def _inner_masks_for_economic(bars, features, economic_labels, outer_train_mask, timeframe, research,
+                               candidate_mask, economic_validation_sessions=None):
     sessions = list(pd.unique(bars.loc[outer_train_mask, "Session"]))
-    if len(sessions) < 6:
+    if economic_validation_sessions is None and len(sessions) < 6:
         raise ValueError("Pas assez de séances historiques pour une validation interne DL économique.")
-    n_valid_sessions = max(2, min(4, len(sessions)//4))
+    if economic_validation_sessions is None:
+        n_valid_sessions = max(2, min(4, len(sessions)//4))
+    else:
+        n_valid_sessions = int(economic_validation_sessions)
+        if n_valid_sessions < 2:
+            raise ValueError("economic_validation_sessions doit être supérieur ou égal à 2.")
+        if len(sessions) < n_valid_sessions:
+            raise ValueError(
+                f"Inner-validation économique demandée: {n_valid_sessions} séances, "
+                f"mais seulement {len(sessions)} séances admissibles dans le train externe."
+            )
     valid_sessions = sessions[-n_valid_sessions:]
     boundary = bars.loc[bars.Session == valid_sessions[0], "SessionOpen"].iloc[0]
     first_pos = bars.index.searchsorted(boundary, side="left")
@@ -462,14 +473,21 @@ def _inner_masks_for_economic(bars, features, economic_labels, outer_train_mask,
     inner_train = np.asarray(outer_train_mask, dtype=bool) & (pos < first_pos-gap) & ready.to_numpy() & (economic_labels["LabelEnd"] < boundary).to_numpy()
     inner_valid = np.asarray(outer_train_mask, dtype=bool) & bars.Session.isin(valid_sessions).to_numpy() & ready.to_numpy()
     if int(inner_train.sum()) < max(60, research.min_train_rows//4):
-        raise ValueError(f"Train interne économique insuffisant: {int(inner_train.sum())} lignes.")
+        detail = f"Train interne économique insuffisant: {int(inner_train.sum())} lignes."
+        if economic_validation_sessions is not None:
+            detail += f" Impossible d'entraîner avec --economic-validation-sessions={n_valid_sessions}."
+        raise ValueError(detail)
     if int(inner_valid.sum()) < 20:
-        raise ValueError(f"Validation interne économique insuffisante: {int(inner_valid.sum())} lignes.")
+        detail = f"Validation interne économique insuffisante: {int(inner_valid.sum())} lignes."
+        if economic_validation_sessions is not None:
+            detail += f" Impossible d'utiliser --economic-validation-sessions={n_valid_sessions}."
+        raise ValueError(detail)
     return inner_train, inner_valid, valid_sessions
 
 
 def _dl_fold_predict_economic(bars, features, economic_labels, train_mask, test_mask, model_name, seeds, epochs, patience,
-                              checkpoint_root: Path, fold_no: int, timeframe: int, research, risk, candidate_mask):
+                              checkpoint_root: Path, fold_no: int, timeframe: int, research, risk, candidate_mask,
+                              economic_validation_sessions=None):
     try:
         from .deep_learning.economic import build_economic_sequence_bundle, transform_economic_sequences
         from .deep_learning.economic_train import train_economic
@@ -479,10 +497,18 @@ def _dl_fold_predict_economic(bars, features, economic_labels, train_mask, test_
         raise
     architecture, context = _parse_dl_model(model_name)
     inner_train, inner_valid, inner_valid_sessions = _inner_masks_for_economic(
-        bars, features, economic_labels, train_mask, timeframe, research, candidate_mask
+        bars, features, economic_labels, train_mask, timeframe, research, candidate_mask,
+        economic_validation_sessions=economic_validation_sessions,
     )
-    bundle = build_economic_sequence_bundle(features, economic_labels, inner_train, inner_valid,
-                                             context_bars=context, columns=GROUPS["D"])
+    try:
+        bundle = build_economic_sequence_bundle(features, economic_labels, inner_train, inner_valid,
+                                                context_bars=context, columns=GROUPS["D"])
+    except ValueError as exc:
+        if economic_validation_sessions is not None:
+            raise ValueError(
+                f"Données insuffisantes avec --economic-validation-sessions={economic_validation_sessions}: {exc}"
+            ) from exc
+        raise
     candidate_test = np.asarray(test_mask, dtype=bool) & pd.Series(candidate_mask, index=bars.index).to_numpy(dtype=bool)
     x_test, test_index = transform_economic_sequences(features, candidate_test, bundle)
     if len(x_test) < 5:
@@ -490,7 +516,12 @@ def _dl_fold_predict_economic(bars, features, economic_labels, train_mask, test_
     valid_frames=[]; test_frames=[]; training_rows=[]
     for seed in seeds:
         ckpt = checkpoint_root / model_name / f"fold_{fold_no:02d}_seed_{seed}.pt"
-        print(f"      {model_name} economic · seed {seed} · train={len(bundle.x_train)} inner-valid={len(bundle.x_valid)} test={len(x_test)}", flush=True)
+        print(
+            f"      {model_name} economic · seed {seed} · train={len(bundle.x_train)} "
+            f"inner-valid={len(bundle.x_valid)} séquences/{len(inner_valid_sessions)} séances "
+            f"test={len(x_test)}",
+            flush=True,
+        )
         result = train_economic(bundle, architecture=architecture, hidden_size=24, max_epochs=int(epochs),
                                 patience=int(patience), seed=int(seed), checkpoint=ckpt,
                                 x_test=x_test, test_index=test_index)
@@ -502,6 +533,7 @@ def _dl_fold_predict_economic(bars, features, economic_labels, train_mask, test_
             "valid_loss": float(result.valid_loss), "device": result.device,
             "n_parameters": int(result.n_parameters), "train_sequences": int(len(bundle.x_train)),
             "valid_sequences": int(len(bundle.x_valid)), "test_sequences": int(len(x_test)),
+            "inner_valid_session_count": int(len(inner_valid_sessions)),
             "inner_valid_sessions": ",".join(map(str, inner_valid_sessions)),
             "pos_weight_profitable": float(result.pos_weight[0]), "checkpoint": result.checkpoint,
         })
@@ -522,6 +554,7 @@ def _dl_fold_predict_economic(bars, features, economic_labels, train_mask, test_
         "min_validation_trades_required":int(research.min_validation_trades),
         "min_validation_sessions_required":int(research.min_validation_sessions_with_trades),
         "max_validation_top1_abs_share_allowed":float(research.max_validation_top1_abs_share),
+        "inner_valid_session_count": int(len(inner_valid_sessions)),
         "inner_valid_sessions": ",".join(map(str,inner_valid_sessions)), **selection,
     }
     print(f"      seuil validation {model_name}: {selected_threshold if selected_threshold is not None else 'NO_TRADE'} · {selection['reason']}", flush=True)
@@ -688,9 +721,14 @@ def unified_walkforward(snapshot, cfg: AppConfig, out_dir: Path, timeframe: int 
                         seeds=(42,), epochs=20, patience=4,
                         include_classic=True, include_rules=True,
                         max_sessions=None, dl_objective="direction", start_date=None, end_date=None,
-                        max_folds: int | None = None):
+                        max_folds: int | None = None, economic_validation_sessions: int | None = None):
     if timeframe not in (5, 10, 15):
         raise ValueError("Le moteur de backtest supporte 5, 10 ou 15 minutes.")
+    if economic_validation_sessions is not None:
+        if economic_validation_sessions < 2:
+            raise ValueError("economic_validation_sessions doit être supérieur ou égal à 2.")
+        if dl_objective != "economic":
+            raise ValueError("--economic-validation-sessions nécessite --dl-objective economic.")
     out = make_output(out_dir)
     started = time.time()
     _banner(f"PIPELINE {snapshot.symbol} · {timeframe} min")
@@ -830,7 +868,8 @@ def unified_walkforward(snapshot, cfg: AppConfig, out_dir: Path, timeframe: int 
             if dl_objective == "economic":
                 pred, diag, training, selection, threshold_grid = _dl_fold_predict_economic(
                     bars, fset.values, economic_labels, train_mask, valid_mask, model_name,
-                    seeds, epochs, patience, checkpoint_root, fold_no, timeframe, cfg.research, cfg.risk, candidate_mask
+                    seeds, epochs, patience, checkpoint_root, fold_no, timeframe, cfg.research, cfg.risk,
+                    candidate_mask, economic_validation_sessions=economic_validation_sessions,
                 )
                 economic_prediction_frames.append(diag)
                 dl_selection_rows.append(selection)
@@ -1113,7 +1152,8 @@ def run_terminal_pipeline(symbol: str, out_dir: Path, data_dir: Path | None = No
                           timeframe=5, dl_models=("MLP_12", "MLP_24", "TCN_12", "TCN_24"),
                           seeds=(42,), epochs=20, patience=4, config_path: Path | None = None,
                           max_sessions=None, dl_objective="direction", train_sessions=None, fold_sessions=None,
-                          start_date=None, end_date=None, max_folds: int | None = None):
+                          start_date=None, end_date=None, max_folds: int | None = None,
+                          economic_validation_sessions: int | None = None):
     cfg = AppConfig.load(config_path if config_path and Path(config_path).exists() else None)
     if train_sessions is not None or fold_sessions is not None:
         rc = replace(cfg.research,
@@ -1137,7 +1177,7 @@ def run_terminal_pipeline(symbol: str, out_dir: Path, data_dir: Path | None = No
         snapshot, cfg, run_root, timeframe=timeframe, dl_models=tuple(dl_models), seeds=tuple(seeds),
         epochs=epochs, patience=patience, include_classic=True, include_rules=True,
         max_sessions=max_sessions, dl_objective=dl_objective, start_date=start_date, end_date=end_date,
-        max_folds=max_folds,
+        max_folds=max_folds, economic_validation_sessions=economic_validation_sessions,
     )
 
 
