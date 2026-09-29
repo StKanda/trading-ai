@@ -6,3 +6,4 @@ threadpoolctl>=3.1,<4
 PyYAML>=6,<7
 plotly>=6,<7
 streamlit>=1.38,<2
+pytest>=8,<10
