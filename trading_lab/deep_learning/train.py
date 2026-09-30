@@ -30,7 +30,8 @@ def set_seed(seed):
 
 def train_classifier(bundle, architecture="mlp", hidden_size=64, dropout=0.2,
                      learning_rate=1e-3, weight_decay=1e-4, batch_size=64,
-                     max_epochs=40, patience=5, seed=42, checkpoint=None):
+                     max_epochs=40, patience=5, seed=42, checkpoint=None,
+                     progress_callback=None):
     set_seed(seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if architecture == "mlp":
@@ -50,6 +51,8 @@ def train_classifier(bundle, architecture="mlp", hidden_size=64, dropout=0.2,
     best, best_epoch, wait = float("inf"), -1, 0
     best_state = copy.deepcopy(model.state_dict())
     train_loss = float("nan")
+    epochs_run = 0
+    early_stopped = False
     for epoch in range(max_epochs):
         model.train(); losses = []
         for xb, yb in loader:
@@ -65,8 +68,14 @@ def train_classifier(bundle, architecture="mlp", hidden_size=64, dropout=0.2,
             best_state = copy.deepcopy(model.state_dict())
         else:
             wait += 1
-            if wait >= patience:
-                break
+        epochs_run = epoch + 1
+        stopping = wait >= patience
+        if progress_callback is not None:
+            progress_callback({"event": "epoch", "epoch": epochs_run, "max_epochs": max_epochs,
+                               "best_epoch": best_epoch + 1, "early_stopping": stopping})
+        if stopping:
+            early_stopped = True
+            break
     model.load_state_dict(best_state); model.eval()
     with torch.no_grad():
         scores = torch.sigmoid(model(xv)).cpu().numpy()
@@ -76,6 +85,9 @@ def train_classifier(bundle, architecture="mlp", hidden_size=64, dropout=0.2,
         torch.save({"state_dict": best_state, "architecture": architecture, "columns": bundle.columns,
                     "context_bars": bundle.context_bars, "seed": seed}, path)
         ckpt = str(path)
+    if progress_callback is not None:
+        progress_callback({"event": "finished", "epochs_run": epochs_run,
+                           "best_epoch": best_epoch + 1, "early_stopped": early_stopped})
     return TrainResult(best_epoch, train_loss, best, ckpt, str(device),
                        sum(p.numel() for p in model.parameters()), scores)
 

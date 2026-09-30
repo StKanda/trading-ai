@@ -12,7 +12,7 @@ ALL_TARGETS = CLASS_TARGETS + REG_TARGETS
 
 
 def build_economic_labels(bars: pd.DataFrame, features: pd.DataFrame, research, risk,
-                          candidate_mask: pd.Series | None = None) -> pd.DataFrame:
+                          candidate_mask: pd.Series | None = None, progress_callback=None) -> pd.DataFrame:
     """Labels économiques directs d'un trade isolé déclenché à la clôture t.
 
     Chaque candidat est rejoué avec le même simulateur que le backtest: signal à t,
@@ -32,7 +32,11 @@ def build_economic_labels(bars: pd.DataFrame, features: pd.DataFrame, research, 
     fee = risk.fee_bps / 10000.0
     slip = risk.slippage_bps / 10000.0
 
-    for signal_time in bars.index[mask]:
+    candidates = bars.index[mask]
+    for candidate_number, signal_time in enumerate(candidates, start=1):
+        if progress_callback is not None:
+            progress_callback({"completed": candidate_number, "total": len(candidates),
+                               "detail": "candidats évalués"})
         session = bars.at[signal_time, "Session"]
         sb_all = bars.loc[bars.Session == session]
         try:
@@ -79,6 +83,8 @@ def build_economic_labels(bars: pd.DataFrame, features: pd.DataFrame, research, 
         out.at[signal_time, "MAE"] = mae
         out.at[signal_time, "LabelEnd"] = exit_time
         out.at[signal_time, "ExitReason"] = exit_reason
+    if progress_callback is not None and len(candidates) == 0:
+        progress_callback({"completed": 0, "total": 0})
     return out
 
 

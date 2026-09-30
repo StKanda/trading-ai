@@ -20,7 +20,7 @@ class Simulation:
     trades: pd.DataFrame
 
 
-def simulate(bars, probabilities, features, config, research):
+def simulate(bars, probabilities, features, config, research, progress_callback=None):
     if bars.empty:
         raise ValueError("Période de simulation vide.")
     fee, slip = config.fee_bps / 10000, config.slippage_bps / 10000
@@ -119,6 +119,8 @@ def simulate(bars, probabilities, features, config, research):
                          Signal=int(pd.notna(scores.iloc[i]) and scores.iloc[i] >= research.threshold),
                          ModelScore=scores.iloc[i]))
         previous_equity = capital
+        if progress_callback is not None:
+            progress_callback({"completed": i + 1, "total": len(bars), "detail": f"{len(trades)} trades"})
     if position is not None:
         raise ValueError("Fin de données avant fermeture planifiée. Fournir des séances complètes.")
     ledger = pd.DataFrame(rows).set_index("End")

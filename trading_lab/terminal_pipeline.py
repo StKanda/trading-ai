@@ -12,7 +12,7 @@ import pandas as pd
 from .config import AppConfig
 from .data.market import Snapshot, completed_bars, utc
 from .data.providers import CSVProvider, YahooProvider, write_snapshot
-from .features.engine import FeatureEngine, build_labels, GROUPS
+from .features.engine import FeatureEngine, build_labels, GROUPS, feature_columns_for_variant
 from .deep_learning.utility import build_utility_labels
 from .deep_learning.economic import build_economic_labels
 from .research.models import MODEL_IDS, eligible_train, fit_predict
@@ -20,6 +20,7 @@ from .research.rules import RULE_IDS, rule_predictions
 from .research.backtest import simulate, reference_curve
 from .research.metrics import performance, classification
 from .research.walkforward import make_output, cash_curve, bootstrap_daily
+from .progress import TerminalProgress
 
 
 def _banner(text: str) -> None:
@@ -86,7 +87,8 @@ def _walkforward_fold_starts(session_count: int, train_sessions: int, fold_sessi
 
 
 def _dl_fold_predict(features, labels, train_mask, valid_mask, model_name, seeds, epochs, patience,
-                     checkpoint_root: Path, fold_no: int):
+                     checkpoint_root: Path, fold_no: int, feature_columns=None, progress=None,
+                     progress_context=""):
     try:
         from .deep_learning.dataset import build_sequence_bundle
         from .deep_learning.train import train_classifier
@@ -100,11 +102,11 @@ def _dl_fold_predict(features, labels, train_mask, valid_mask, model_name, seeds
     architecture, context = _parse_dl_model(model_name)
     bundle = build_sequence_bundle(
         features, labels, train_mask, valid_mask,
-        context_bars=context, columns=GROUPS["D"]
+        context_bars=context, columns=feature_columns or GROUPS["D"]
     )
     per_seed = []
     training_rows = []
-    for seed in seeds:
+    for seed_number, seed in enumerate(seeds, start=1):
         ckpt = checkpoint_root / model_name / f"fold_{fold_no:02d}_seed_{seed}.pt"
         print(f"      {model_name} · seed {seed} · train={len(bundle.x_train)} valid={len(bundle.x_valid)}", flush=True)
         result = train_classifier(
@@ -115,6 +117,9 @@ def _dl_fold_predict(features, labels, train_mask, valid_mask, model_name, seeds
             patience=int(patience),
             seed=int(seed),
             checkpoint=ckpt,
+            progress_callback=(progress.epoch_callback(
+                f"{progress_context}{model_name} seed {seed_number}/{len(seeds)}", epochs
+            ) if progress is not None else None),
         )
         per_seed.append(result.validation_scores.astype(float))
         training_rows.append({
@@ -336,7 +341,8 @@ def _choose_validation_threshold_economic(score: pd.Series, bars: pd.DataFrame, 
     }, grid_rows
 
 
-def _inner_masks_for_utility(bars, features, utility_labels, outer_train_mask, timeframe, research, candidate_mask=None):
+def _inner_masks_for_utility(bars, features, utility_labels, outer_train_mask, timeframe, research,
+                             candidate_mask=None, feature_columns=None):
     sessions = list(pd.unique(bars.loc[outer_train_mask, "Session"]))
     if len(sessions) < 6:
         raise ValueError("Pas assez de séances historiques pour une validation interne DL.")
@@ -349,7 +355,8 @@ def _inner_masks_for_utility(bars, features, utility_labels, outer_train_mask, t
         "TargetBeforeStop_15", "TargetBeforeStop_30", "TargetBeforeStop_60",
         "MFE_30", "MAE_30", "NetReturn_15", "NetReturn_30", "NetReturn_60"
     ]].notna().all(axis=1)
-    ready = features[GROUPS["D"]].notna().all(axis=1) & complete
+    columns = feature_columns or GROUPS["D"]
+    ready = features[columns].notna().all(axis=1) & complete
     if candidate_mask is not None:
         ready = ready & pd.Series(candidate_mask, index=bars.index).astype(bool)
     pos = np.arange(len(bars))
@@ -363,7 +370,8 @@ def _inner_masks_for_utility(bars, features, utility_labels, outer_train_mask, t
 
 
 def _dl_fold_predict_utility(bars, features, utility_labels, train_mask, test_mask, model_name, seeds, epochs, patience,
-                             checkpoint_root: Path, fold_no: int, timeframe: int, research, risk, candidate_mask):
+                             checkpoint_root: Path, fold_no: int, timeframe: int, research, risk, candidate_mask,
+                             feature_columns=None, progress=None, progress_context=""):
     try:
         from .deep_learning.utility import build_utility_sequence_bundle, transform_utility_sequences
         from .deep_learning.multitask import train_multitask
@@ -374,11 +382,12 @@ def _dl_fold_predict_utility(bars, features, utility_labels, train_mask, test_ma
 
     architecture, context = _parse_dl_model(model_name)
     inner_train, inner_valid, inner_valid_sessions = _inner_masks_for_utility(
-        bars, features, utility_labels, train_mask, timeframe, research, candidate_mask=candidate_mask
+        bars, features, utility_labels, train_mask, timeframe, research, candidate_mask=candidate_mask,
+        feature_columns=feature_columns,
     )
     bundle = build_utility_sequence_bundle(
         features, utility_labels, inner_train, inner_valid,
-        context_bars=context, columns=GROUPS["D"]
+        context_bars=context, columns=feature_columns or GROUPS["D"]
     )
     candidate_test = np.asarray(test_mask, dtype=bool) & pd.Series(candidate_mask, index=bars.index).to_numpy(dtype=bool)
     x_test, test_index = transform_utility_sequences(features, candidate_test, bundle)
@@ -386,13 +395,16 @@ def _dl_fold_predict_utility(bars, features, utility_labels, train_mask, test_ma
         raise ValueError("Séquences OOS insuffisantes pour le DL utility.")
 
     valid_frames, test_frames, training_rows = [], [], []
-    for seed in seeds:
+    for seed_number, seed in enumerate(seeds, start=1):
         ckpt = checkpoint_root / model_name / f"fold_{fold_no:02d}_seed_{seed}.pt"
         print(f"      {model_name} utility · seed {seed} · train={len(bundle.x_train)} inner-valid={len(bundle.x_valid)} test={len(x_test)}", flush=True)
         result = train_multitask(
             bundle, architecture=architecture, hidden_size=24, max_epochs=int(epochs),
             patience=int(patience), seed=int(seed), checkpoint=ckpt,
             x_test=x_test, test_index=test_index,
+            progress_callback=(progress.epoch_callback(
+                f"{progress_context}{model_name} seed {seed_number}/{len(seeds)}", epochs
+            ) if progress is not None else None),
         )
         valid_frames.append(result.validation_frame.astype(float))
         test_frames.append(result.test_frame.astype(float))
@@ -447,7 +459,7 @@ def _economic_score(frame: pd.DataFrame, pnl_scale: float) -> pd.Series:
 
 
 def _inner_masks_for_economic(bars, features, economic_labels, outer_train_mask, timeframe, research,
-                               candidate_mask, economic_validation_sessions=None):
+                               candidate_mask, economic_validation_sessions=None, feature_columns=None):
     sessions = list(pd.unique(bars.loc[outer_train_mask, "Session"]))
     if economic_validation_sessions is None and len(sessions) < 6:
         raise ValueError("Pas assez de séances historiques pour une validation interne DL économique.")
@@ -468,7 +480,8 @@ def _inner_masks_for_economic(bars, features, economic_labels, outer_train_mask,
     gap = research.horizon_minutes // timeframe + 1 + research.extra_embargo_bars
     cols = ["ProfitableAfterCosts","StopHit","TargetHit","TimeExit","RealizedPnL","RealizedReturn","MFE","MAE"]
     complete = economic_labels[cols].notna().all(axis=1)
-    ready = features[GROUPS["D"]].notna().all(axis=1) & complete & pd.Series(candidate_mask, index=bars.index).astype(bool)
+    columns = feature_columns or GROUPS["D"]
+    ready = features[columns].notna().all(axis=1) & complete & pd.Series(candidate_mask, index=bars.index).astype(bool)
     pos = np.arange(len(bars))
     inner_train = np.asarray(outer_train_mask, dtype=bool) & (pos < first_pos-gap) & ready.to_numpy() & (economic_labels["LabelEnd"] < boundary).to_numpy()
     inner_valid = np.asarray(outer_train_mask, dtype=bool) & bars.Session.isin(valid_sessions).to_numpy() & ready.to_numpy()
@@ -487,7 +500,8 @@ def _inner_masks_for_economic(bars, features, economic_labels, outer_train_mask,
 
 def _dl_fold_predict_economic(bars, features, economic_labels, train_mask, test_mask, model_name, seeds, epochs, patience,
                               checkpoint_root: Path, fold_no: int, timeframe: int, research, risk, candidate_mask,
-                              economic_validation_sessions=None):
+                              economic_validation_sessions=None, feature_columns=None, progress=None,
+                              progress_context=""):
     try:
         from .deep_learning.economic import build_economic_sequence_bundle, transform_economic_sequences
         from .deep_learning.economic_train import train_economic
@@ -499,10 +513,11 @@ def _dl_fold_predict_economic(bars, features, economic_labels, train_mask, test_
     inner_train, inner_valid, inner_valid_sessions = _inner_masks_for_economic(
         bars, features, economic_labels, train_mask, timeframe, research, candidate_mask,
         economic_validation_sessions=economic_validation_sessions,
+        feature_columns=feature_columns,
     )
     try:
         bundle = build_economic_sequence_bundle(features, economic_labels, inner_train, inner_valid,
-                                                context_bars=context, columns=GROUPS["D"])
+                                                context_bars=context, columns=feature_columns or GROUPS["D"])
     except ValueError as exc:
         if economic_validation_sessions is not None:
             raise ValueError(
@@ -514,7 +529,7 @@ def _dl_fold_predict_economic(bars, features, economic_labels, train_mask, test_
     if len(x_test) < 5:
         raise ValueError("Séquences OOS insuffisantes pour le DL économique.")
     valid_frames=[]; test_frames=[]; training_rows=[]
-    for seed in seeds:
+    for seed_number, seed in enumerate(seeds, start=1):
         ckpt = checkpoint_root / model_name / f"fold_{fold_no:02d}_seed_{seed}.pt"
         print(
             f"      {model_name} economic · seed {seed} · train={len(bundle.x_train)} "
@@ -524,7 +539,10 @@ def _dl_fold_predict_economic(bars, features, economic_labels, train_mask, test_
         )
         result = train_economic(bundle, architecture=architecture, hidden_size=24, max_epochs=int(epochs),
                                 patience=int(patience), seed=int(seed), checkpoint=ckpt,
-                                x_test=x_test, test_index=test_index)
+                                x_test=x_test, test_index=test_index,
+                                progress_callback=(progress.epoch_callback(
+                                    f"{progress_context}{model_name} seed {seed_number}/{len(seeds)}", epochs
+                                ) if progress is not None else None))
         valid_frames.append(result.validation_frame.astype(float)); test_frames.append(result.test_frame.astype(float))
         training_rows.append({
             "fold": fold_no, "model": model_name, "objective": "direct_economic_v11_4",
@@ -611,7 +629,7 @@ def _raw_rank_metrics(y: pd.Series, score: pd.Series, model: str) -> dict:
 
 
 def _candidate_oracle_diagnostic(evaluated: pd.DataFrame, candidate_score: pd.Series, features: pd.DataFrame,
-                                 risk, research) -> pd.DataFrame:
+                                 risk, research, progress_callback=None) -> pd.DataFrame:
     """Diagnostic futur-fuyant: résultat isolé de chaque setup candidat OOS.
 
     Strictement interdit comme signal de trading. Chaque candidat est simulé seul
@@ -622,7 +640,10 @@ def _candidate_oracle_diagnostic(evaluated: pd.DataFrame, candidate_score: pd.Se
     candidates = candidate_score[candidate_score >= research.threshold].index
     minutes = int((evaluated.index[0] - evaluated.Start.iloc[0]).total_seconds() / 60)
     horizon_rows = int(research.horizon_minutes // minutes) + 2
-    for signal_time in candidates:
+    for candidate_number, signal_time in enumerate(candidates, start=1):
+        if progress_callback is not None:
+            progress_callback({"completed": candidate_number, "total": len(candidates),
+                               "detail": "setups diagnostics"})
         if signal_time not in evaluated.index:
             continue
         session = evaluated.loc[signal_time, "Session"]
@@ -656,6 +677,8 @@ def _candidate_oracle_diagnostic(evaluated: pd.DataFrame, candidate_score: pd.Se
             "profitable_after_costs": bool(pnl > 0), "exit_reason": tr["exit_reason"],
             "diagnostic_only_future_leakage": True,
         })
+    if progress_callback is not None and len(candidates) == 0:
+        progress_callback({"completed": 0, "total": 0, "detail": "aucun setup"})
     return pd.DataFrame(rows)
 
 def _parse_date_bounds(start_date=None, end_date=None):
@@ -721,9 +744,13 @@ def unified_walkforward(snapshot, cfg: AppConfig, out_dir: Path, timeframe: int 
                         seeds=(42,), epochs=20, patience=4,
                         include_classic=True, include_rules=True,
                         max_sessions=None, dl_objective="direction", start_date=None, end_date=None,
-                        max_folds: int | None = None, economic_validation_sessions: int | None = None):
+                        max_folds: int | None = None, economic_validation_sessions: int | None = None,
+                        feature_variant="baseline", progress=False):
     if timeframe not in (5, 10, 15):
         raise ValueError("Le moteur de backtest supporte 5, 10 ou 15 minutes.")
+    mtf_columns = feature_columns_for_variant(feature_variant)
+    if feature_variant != "baseline" and timeframe != 5:
+        raise ValueError("Les variantes MTF exigent un timeframe signal de 5 minutes.")
     if economic_validation_sessions is not None:
         if economic_validation_sessions < 2:
             raise ValueError("economic_validation_sessions doit être supérieur ou égal à 2.")
@@ -731,6 +758,7 @@ def unified_walkforward(snapshot, cfg: AppConfig, out_dir: Path, timeframe: int 
             raise ValueError("--economic-validation-sessions nécessite --dl-objective economic.")
     out = make_output(out_dir)
     started = time.time()
+    reporter = TerminalProgress(enabled=progress)
     _banner(f"PIPELINE {snapshot.symbol} · {timeframe} min")
 
     snapshot = _closed_session_snapshot(snapshot)
@@ -740,11 +768,19 @@ def unified_walkforward(snapshot, cfg: AppConfig, out_dir: Path, timeframe: int 
     # has already been restricted to the requested dates.
     bars = _filter_date_range(bars, start_date=start_date, end_date=end_date)
     bars = _subset_sessions(bars, max_sessions)
-    fset = FeatureEngine().build(bars)
+    fset = FeatureEngine().build(bars, mtf_variant=feature_variant, snapshot=snapshot)
+    dl_feature_columns = GROUPS["D"] + mtf_columns
+    dl_ready = fset.values[dl_feature_columns].notna().all(axis=1)
     labels = build_labels(bars, cfg.research, cfg.risk)
     utility_labels = build_utility_labels(bars, fset.values, cfg.research, cfg.risk) if dl_objective == "utility" else None
     candidate_mask = _candidate_setup_mask(bars, fset.values) if dl_objective in {"utility", "economic"} else pd.Series(True, index=bars.index)
-    economic_labels = build_economic_labels(bars, fset.values, cfg.research, cfg.risk, candidate_mask) if dl_objective == "economic" else None
+    if dl_objective == "economic":
+        label_callback = reporter.item_callback("Labels économiques") if progress else None
+        economic_labels = build_economic_labels(
+            bars, fset.values, cfg.research, cfg.risk, candidate_mask, progress_callback=label_callback
+        )
+    else:
+        economic_labels = None
     sessions = list(pd.unique(bars.Session))
     period_meta = {
         "requested_start_date": start_date,
@@ -763,6 +799,8 @@ def unified_walkforward(snapshot, cfg: AppConfig, out_dir: Path, timeframe: int 
         )
     print(f"Données: {len(bars)} bougies · {len(sessions)} séances", flush=True)
     print(f"DL: {', '.join(dl_models) if dl_models else 'désactivé'} · seeds={list(seeds)}", flush=True)
+    if progress or feature_variant != "baseline":
+        print(f"Features: {feature_variant} · DL columns={len(dl_feature_columns)}", flush=True)
 
     fold_frames = []
     audit_rows = []
@@ -774,9 +812,12 @@ def unified_walkforward(snapshot, cfg: AppConfig, out_dir: Path, timeframe: int 
     checkpoint_root = out / "checkpoints"
     fold_no = 0
 
-    for first in _walkforward_fold_starts(
+    fold_starts = list(_walkforward_fold_starts(
         len(sessions), cfg.research.train_sessions, cfg.research.fold_sessions, max_folds
-    ):
+    ))
+    fold_total = len(fold_starts)
+    fold_progress = reporter.item_callback("Walk-forward folds") if progress else None
+    for fold_position, first in enumerate(fold_starts, start=1):
         days = sessions[first:first + cfg.research.fold_sessions]
         if not len(days):
             continue
@@ -788,7 +829,7 @@ def unified_walkforward(snapshot, cfg: AppConfig, out_dir: Path, timeframe: int 
                 first_pos = bars.index.searchsorted(boundary, side="left")
                 gap = cfg.research.horizon_minutes // timeframe + 1 + cfg.research.extra_embargo_bars
                 econ_cols = ["ProfitableAfterCosts","StopHit","TargetHit","TimeExit","RealizedPnL","RealizedReturn","MFE","MAE"]
-                ready = fset.values[GROUPS["D"]].notna().all(axis=1) & economic_labels[econ_cols].notna().all(axis=1) & candidate_mask
+                ready = dl_ready & economic_labels[econ_cols].notna().all(axis=1) & candidate_mask
                 positions = np.arange(len(bars))
                 train_mask = (positions < first_pos-gap) & ready.to_numpy() & (economic_labels["LabelEnd"] < boundary).to_numpy()
                 if int(train_mask.sum()) < max(60, cfg.research.min_train_rows//4):
@@ -810,7 +851,7 @@ def unified_walkforward(snapshot, cfg: AppConfig, out_dir: Path, timeframe: int 
                     "TargetBeforeStop_15", "TargetBeforeStop_30", "TargetBeforeStop_60",
                     "MFE_30", "MAE_30", "NetReturn_15", "NetReturn_30", "NetReturn_60"
                 ]].notna().all(axis=1)
-                ready = fset.values[GROUPS["D"]].notna().all(axis=1) & complete_targets
+                ready = dl_ready & complete_targets
                 positions = np.arange(len(bars))
                 train_mask = (positions < first_pos - gap) & ready & (utility_labels["LabelEnd_60"] < boundary)
                 if int(train_mask.sum()) < cfg.research.min_train_rows:
@@ -828,6 +869,10 @@ def unified_walkforward(snapshot, cfg: AppConfig, out_dir: Path, timeframe: int 
                 })
         except ValueError as exc:
             print(f"Fold ignoré {days[0]}: {exc}", flush=True)
+            reporter.update(f"fold {fold_position}/{fold_total} ignoré · {days[0]}", force=True)
+            if fold_progress:
+                fold_progress({"completed": fold_position, "total": fold_total,
+                               "detail": f"fold ignoré {days[0]}"})
             continue
         if dl_objective == "economic":
             econ_cols = ["ProfitableAfterCosts","StopHit","TargetHit","TimeExit","RealizedPnL","RealizedReturn","MFE","MAE"]
@@ -846,9 +891,16 @@ def unified_walkforward(snapshot, cfg: AppConfig, out_dir: Path, timeframe: int 
                 bars.Session.isin(days) & fset.values[GROUPS["D"]].notna().all(axis=1) & labels.Target.notna()
             ]
         if not len(valid_index):
+            if fold_progress:
+                fold_progress({"completed": fold_position, "total": fold_total,
+                               "detail": f"fold sans validation {days[0]}"})
             continue
         valid_mask = bars.index.isin(valid_index)
+        dl_train_mask = (np.asarray(train_mask, dtype=bool) & dl_ready.to_numpy()
+                 if dl_objective == "direction" else train_mask)
+        dl_valid_mask = valid_mask & dl_ready.to_numpy()
         fold_no += 1
+        reporter.update(f"fold {fold_position}/{fold_total} · préparation prédictions", force=True)
         print(
             f"\n[{fold_no}] Walk-forward {days[0]} → {days[-1]} · "
             f"{int(train_mask.sum())} lignes train · {len(valid_index)} lignes test",
@@ -857,35 +909,50 @@ def unified_walkforward(snapshot, cfg: AppConfig, out_dir: Path, timeframe: int 
         parts = []
         if include_classic:
             _banner(f"Fold {fold_no}: modèles classiques")
-            parts.append(pd.concat([
-                fit_predict(m, fset.values, labels, classic_train_mask, valid_index, cfg.research)
-                for m in MODEL_IDS
-            ], axis=1))
+            classic_predictions = []
+            classic_progress = reporter.item_callback(f"fold {fold_position}/{fold_total} modèles classiques") if progress else None
+            for model_position, model_name in enumerate(MODEL_IDS, start=1):
+                reporter.update(
+                    f"fold {fold_position}/{fold_total} · modèle classique "
+                    f"{model_position}/{len(MODEL_IDS)} {model_name}", force=bool(progress)
+                )
+                classic_predictions.append(fit_predict(model_name, fset.values, labels, classic_train_mask,
+                                                      valid_index, cfg.research))
+                if classic_progress:
+                    classic_progress({"completed": model_position, "total": len(MODEL_IDS), "detail": model_name})
+            parts.append(pd.concat(classic_predictions, axis=1))
         if include_rules:
             parts.append(rule_predictions(bars, fset.values, valid_index))
-        for model_name in dl_models:
+        for model_position, model_name in enumerate(dl_models, start=1):
+            progress_context = f"fold {fold_position}/{fold_total} · modèle {model_position}/{len(dl_models)} · "
+            reporter.update(f"{progress_context}{model_name} · seeds={len(seeds)} epochs≤{epochs}", force=True)
             _banner(f"Fold {fold_no}: {model_name} · objectif {dl_objective}")
             if dl_objective == "economic":
                 pred, diag, training, selection, threshold_grid = _dl_fold_predict_economic(
-                    bars, fset.values, economic_labels, train_mask, valid_mask, model_name,
+                    bars, fset.values, economic_labels, dl_train_mask, dl_valid_mask, model_name,
                     seeds, epochs, patience, checkpoint_root, fold_no, timeframe, cfg.research, cfg.risk,
                     candidate_mask, economic_validation_sessions=economic_validation_sessions,
+                    feature_columns=dl_feature_columns, progress=reporter if progress else None,
+                    progress_context=progress_context,
                 )
                 economic_prediction_frames.append(diag)
                 dl_selection_rows.append(selection)
                 dl_threshold_grid_rows.extend(threshold_grid)
             elif dl_objective == "utility":
                 pred, diag, training, selection, threshold_grid = _dl_fold_predict_utility(
-                    bars, fset.values, utility_labels, train_mask, valid_mask, model_name,
-                    seeds, epochs, patience, checkpoint_root, fold_no, timeframe, cfg.research, cfg.risk, candidate_mask
+                    bars, fset.values, utility_labels, dl_train_mask, dl_valid_mask, model_name,
+                    seeds, epochs, patience, checkpoint_root, fold_no, timeframe, cfg.research, cfg.risk, candidate_mask,
+                    feature_columns=dl_feature_columns, progress=reporter if progress else None,
+                    progress_context=progress_context,
                 )
                 utility_prediction_frames.append(diag)
                 dl_selection_rows.append(selection)
                 dl_threshold_grid_rows.extend(threshold_grid)
             else:
                 pred, training = _dl_fold_predict(
-                    fset.values, labels, train_mask, valid_mask, model_name,
-                    seeds, epochs, patience, checkpoint_root, fold_no
+                    fset.values, labels, dl_train_mask, dl_valid_mask, model_name,
+                    seeds, epochs, patience, checkpoint_root, fold_no, feature_columns=dl_feature_columns,
+                    progress=reporter if progress else None, progress_context=progress_context,
                 )
             parts.append(pred.to_frame())
             train_rows.extend(training)
@@ -899,12 +966,16 @@ def unified_walkforward(snapshot, cfg: AppConfig, out_dir: Path, timeframe: int 
             "sessions": ",".join(map(str, days)),
         })
         audit_rows.append(audit)
+        if fold_progress:
+            fold_progress({"completed": fold_position, "total": fold_total,
+                           "detail": f"{days[0]} → {days[-1]}"})
 
     if not fold_frames:
         raise ValueError("Aucun fold walk-forward n'a pu être produit.")
 
     predictions = pd.concat(fold_frames).sort_index()
     predictions = predictions.loc[~predictions.index.duplicated(keep="first")]
+    reporter.update("Exports OOS · predictions et labels", force=True)
     predictions.to_csv(out / "predictions_oos.csv")
     labels.reindex(predictions.index).to_csv(out / "labels_oos.csv")
     if utility_labels is not None:
@@ -954,12 +1025,15 @@ def unified_walkforward(snapshot, cfg: AppConfig, out_dir: Path, timeframe: int 
         pd.DataFrame(dl_threshold_grid_rows).to_csv(out / "dl_threshold_grid.csv", index=False)
     pd.DataFrame(audit_rows).to_csv(out / "folds.csv", index=False)
     pd.DataFrame(train_rows).to_csv(out / "dl_training.csv", index=False)
+    reporter.update("Exports OOS · features.csv", force=True)
     fset.values.to_csv(out / "features.csv")
+    reporter.update("Exports OOS · bars.csv", force=True)
     bars.to_csv(out / "bars.csv")
     if dl_objective in {"utility", "economic"}:
         candidate_frame = pd.DataFrame({"CandidateSetup": candidate_mask.astype(int), "Session": bars.Session}, index=bars.index)
         candidate_frame.to_csv(out / "candidate_setups.csv")
         candidate_frame.groupby("Session").CandidateSetup.agg(["count","sum","mean"]).rename(columns={"count":"bars","sum":"candidates","mean":"candidate_rate"}).to_csv(out / "candidate_setup_stats.csv")
+    reporter.update("Exports OOS · CSV prêts", force=True)
 
     evaluated_sessions = bars.loc[bars.index.isin(predictions.index), "Session"].unique()
     evaluated = bars.loc[bars.Session.isin(evaluated_sessions)].copy()
@@ -970,22 +1044,30 @@ def unified_walkforward(snapshot, cfg: AppConfig, out_dir: Path, timeframe: int 
     # Baseline diagnostique: tous les setups candidats, sans ranking DL.
     # Elle est exclue de toute promotion et sert à tester la qualité de l'univers candidat.
     if dl_objective in {"utility", "economic"}:
+        reporter.update("Diagnostic candidat · backtest et stress", force=True)
         candidate_oos = candidate_mask.reindex(predictions.index).fillna(False).astype(float).rename("CANDIDATE_ALL")
-        candidate_all_sim = simulate(evaluated, candidate_oos, fset.values, cfg.risk, cfg.research)
+        candidate_sim_progress = reporter.bar_callback("CANDIDATE_ALL · backtest") if progress else None
+        candidate_all_sim = simulate(evaluated, candidate_oos, fset.values, cfg.risk, cfg.research,
+                                     progress_callback=candidate_sim_progress)
         metrics.append({"model": "CANDIDATE_ALL", "kind": "diagnostic", **performance(candidate_all_sim, cfg.risk.initial_capital)})
         curves["CANDIDATE_ALL"] = candidate_all_sim.ledger.Capital
         candidate_all_sim.ledger.to_csv(out / "ledger_CANDIDATE_ALL.csv")
         candidate_all_sim.trades.to_csv(out / "trades_CANDIDATE_ALL.csv", index=False)
         for extra in (2.0, 5.0):
+            reporter.update(f"CANDIDATE_ALL · stress +{extra:g} bps", force=True)
             stressed = replace(cfg.risk, slippage_bps=cfg.risk.slippage_bps + extra)
-            stress_sim = simulate(evaluated, candidate_oos, fset.values, stressed, cfg.research)
+            stress_progress = reporter.bar_callback(f"CANDIDATE_ALL · stress +{extra:g} bps") if progress else None
+            stress_sim = simulate(evaluated, candidate_oos, fset.values, stressed, cfg.research,
+                                  progress_callback=stress_progress)
             perf = performance(stress_sim, stressed.initial_capital)
             stress_rows.append({
                 "model": "CANDIDATE_ALL", "extra_slippage_bps": extra,
                 "total_return": perf["total_return"], "final_capital": perf["final_capital"],
                 "max_drawdown": perf["max_drawdown"], "trades": perf["trades"],
             })
-        oracle = _candidate_oracle_diagnostic(evaluated, candidate_oos, fset.values, cfg.risk, cfg.research)
+        oracle_progress = reporter.item_callback("CANDIDATE_ALL · oracle diagnostique") if progress else None
+        oracle = _candidate_oracle_diagnostic(evaluated, candidate_oos, fset.values, cfg.risk, cfg.research,
+                              progress_callback=oracle_progress)
         oracle.to_csv(out / "candidate_oracle_diagnostic.csv", index=False)
         eligible_oracle = oracle.loc[oracle.get("eligible_trade", pd.Series(dtype=bool)).fillna(False)] if len(oracle) else oracle
         oracle_summary = pd.DataFrame([{
@@ -1000,9 +1082,17 @@ def unified_walkforward(snapshot, cfg: AppConfig, out_dir: Path, timeframe: int 
         oracle_summary.to_csv(out / "candidate_oracle_summary.csv", index=False)
 
     _banner("BACKTEST ÉCONOMIQUE")
-    for model in predictions.columns:
+    economic_models = list(predictions.columns)
+    export_progress = reporter.item_callback("Exports ledger/trades") if progress else None
+    for model_position, model in enumerate(economic_models, start=1):
+        reporter.update(f"BACKTEST ÉCONOMIQUE · modèle {model_position}/{len(economic_models)} {model}", force=True)
         score = predictions[model].dropna()
-        sim = simulate(evaluated, score, fset.values, cfg.risk, cfg.research)
+        main_callback = reporter.bar_callback(
+            f"{model_position}/{len(economic_models)} {model} · backtest principal"
+        ) if progress else None
+        sim = simulate(evaluated, score, fset.values, cfg.risk, cfg.research,
+                       progress_callback=main_callback)
+        reporter.update(f"{model} · métriques/classification · {len(sim.trades)} trades", force=True)
         row = {
             "model": model,
             "kind": "dl" if model.startswith(("MLP_", "TCN_")) else ("rule" if model.startswith("RULE_") else "ml"),
@@ -1020,10 +1110,19 @@ def unified_walkforward(snapshot, cfg: AppConfig, out_dir: Path, timeframe: int 
         metrics.append(row)
         curves[model] = sim.ledger.Capital
         sim.ledger.to_csv(out / f"ledger_{model}.csv")
+        if export_progress:
+            export_progress({"completed": (model_position - 1) * 2 + 1,
+                             "total": len(economic_models) * 2, "detail": f"ledger_{model}.csv"})
         sim.trades.to_csv(out / f"trades_{model}.csv", index=False)
+        if export_progress:
+            export_progress({"completed": model_position * 2, "total": len(economic_models) * 2,
+                             "detail": f"trades_{model}.csv ({len(sim.trades)} trades)"})
         for extra in (2.0, 5.0):
+            reporter.update(f"{model} · stress coûts +{extra:g} bps", force=True)
             stressed = replace(cfg.risk, slippage_bps=cfg.risk.slippage_bps + extra)
-            stress_sim = simulate(evaluated, score, fset.values, stressed, cfg.research)
+            stress_callback = reporter.bar_callback(f"{model} · stress +{extra:g} bps") if progress else None
+            stress_sim = simulate(evaluated, score, fset.values, stressed, cfg.research,
+                                  progress_callback=stress_callback)
             perf = performance(stress_sim, stressed.initial_capital)
             stress_rows.append({
                 "model": model,
@@ -1043,7 +1142,9 @@ def unified_walkforward(snapshot, cfg: AppConfig, out_dir: Path, timeframe: int 
     metrics.append({"model": "CASH", "kind": "benchmark", **performance(cash, cfg.risk.initial_capital)})
     curves["CASH"] = cash.ledger.Capital
 
+    reporter.update("BACKTEST ÉCONOMIQUE · benchmarks et métriques finales", force=True)
     metrics_df = pd.DataFrame(metrics)
+    reporter.update("BACKTEST ÉCONOMIQUE · écriture metrics/stress/bootstrap/daily", force=True)
     metrics_df.to_csv(out / "metrics.csv", index=False)
     stress_df = pd.DataFrame(stress_rows)
     stress_df.to_csv(out / "stress_costs.csv", index=False)
@@ -1100,6 +1201,7 @@ def unified_walkforward(snapshot, cfg: AppConfig, out_dir: Path, timeframe: int 
             "top3_share_abs": abs(top3) / max(abs(total), 1e-12) if total else np.nan,
         })
     pd.DataFrame(concentration_rows).to_csv(out / "trade_concentration.csv", index=False)
+    reporter.update("BACKTEST ÉCONOMIQUE · exports terminés", force=True)
 
     elapsed = time.time() - started
     report = {
@@ -1128,6 +1230,9 @@ def unified_walkforward(snapshot, cfg: AppConfig, out_dir: Path, timeframe: int 
             + "les scores DL/ML ne sont pas des probabilités calibrées et ce pipeline ne prouve pas un edge tradable."
         ),
     }
+    if feature_variant != "baseline":
+        report["feature_variant"] = feature_variant
+        report["dl_feature_columns"] = dl_feature_columns
     (out / "run.json").write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
 
     printable = metrics_df[[c for c in [
@@ -1153,7 +1258,8 @@ def run_terminal_pipeline(symbol: str, out_dir: Path, data_dir: Path | None = No
                           seeds=(42,), epochs=20, patience=4, config_path: Path | None = None,
                           max_sessions=None, dl_objective="direction", train_sessions=None, fold_sessions=None,
                           start_date=None, end_date=None, max_folds: int | None = None,
-                          economic_validation_sessions: int | None = None):
+                          economic_validation_sessions: int | None = None,
+                          feature_variant="baseline", progress=False):
     cfg = AppConfig.load(config_path if config_path and Path(config_path).exists() else None)
     if train_sessions is not None or fold_sessions is not None:
         rc = replace(cfg.research,
@@ -1178,6 +1284,7 @@ def run_terminal_pipeline(symbol: str, out_dir: Path, data_dir: Path | None = No
         epochs=epochs, patience=patience, include_classic=True, include_rules=True,
         max_sessions=max_sessions, dl_objective=dl_objective, start_date=start_date, end_date=end_date,
         max_folds=max_folds, economic_validation_sessions=economic_validation_sessions,
+        feature_variant=feature_variant, progress=progress,
     )
 
 

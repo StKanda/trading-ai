@@ -9,7 +9,7 @@ import pandas as pd
 
 TZ = ZoneInfo("America/New_York")
 _BASE_MINUTES = 5
-_SUPPORTED_TIMEFRAMES = (5, 10, 15, 30)
+_SUPPORTED_TIMEFRAMES = (5, 10, 15, 30, 60)
 _PRICE_COLUMNS = ("Open", "High", "Low", "Close", "Volume")
 
 
@@ -123,6 +123,8 @@ def completed_bars(snapshot: Snapshot, timeframe: int = 5, asof=None,
         bucket_starts = full_grid[:: timeframe // _BASE_MINUTES]
         for start in bucket_starts:
             end = min(start + session_delta, market_close)
+            if timeframe == 60 and end - start != session_delta:
+                continue
             if end > effective_asof:
                 continue
             components = expected_grid[(expected_grid >= start) & (expected_grid < end)]
@@ -159,6 +161,49 @@ def completed_bars(snapshot: Snapshot, timeframe: int = 5, asof=None,
     })
     if require_complete and partial_capture:
         raise ValueError("La dernière séance est incomplète au moment de capture.")
+    return result
+
+
+def completed_daily_bars(snapshot: Snapshot, asof=None) -> pd.DataFrame:
+    """Return only complete, observed regular sessions available by ``asof``.
+
+    Incomplete sessions are omitted rather than filled. Certified market halts
+    remove only their known non-trading timestamps from the expected grid.
+    """
+    validate_prices(snapshot.prices)
+    schedule = _schedule_frame(snapshot.schedule)
+    requested_asof = utc(asof) if asof is not None else pd.Timestamp.now(tz="UTC")
+    captured = snapshot.metadata.get("fetched_at")
+    effective_asof = min(requested_asof, utc(captured)) if captured else requested_asof
+    prices = snapshot.prices.copy()
+    prices.index = prices.index.tz_convert("UTC")
+    rows = []
+    for session, sched in schedule.iterrows():
+        opened, closed = sched.MarketOpen, sched.MarketClose
+        if closed > effective_asof:
+            continue
+        grid = pd.date_range(opened, closed, freq="5min", inclusive="left")
+        expected = grid.difference(_quality_halts(snapshot, str(session)))
+        observed = prices.loc[(prices.index >= opened) & (prices.index < closed)]
+        if expected.empty or len(expected.difference(observed.index)):
+            continue
+        data = observed.reindex(expected)
+        if data.loc[:, _PRICE_COLUMNS].isna().any().any():
+            continue
+        rows.append({
+            "Start": opened, "Session": str(session), "SessionOpen": opened,
+            "SessionClose": closed, "Open": float(data.Open.iloc[0]),
+            "High": float(data.High.max()), "Low": float(data.Low.min()),
+            "Close": float(data.Close.iloc[-1]), "Volume": float(data.Volume.sum()),
+        })
+    columns = ["Start", "Session", "SessionOpen", "SessionClose", *_PRICE_COLUMNS]
+    if rows:
+        result = pd.DataFrame(rows, index=pd.DatetimeIndex([row["SessionClose"] for row in rows]))
+        result.index.name = "Timestamp"
+        result = result.loc[:, columns]
+    else:
+        result = pd.DataFrame(columns=columns, index=pd.DatetimeIndex([], tz="UTC", name="Timestamp"))
+    result.attrs.update({"timeframe": "daily", "base_timeframe": _BASE_MINUTES})
     return result
 
 

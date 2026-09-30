@@ -90,6 +90,9 @@ def main(argv=None):
     pipe.add_argument("--source", choices=("local","yahoo"), default="local")
     pipe.add_argument("--data", type=Path, help="Dossier CSV si --source local")
     pipe.add_argument("--timeframe", type=int, choices=(5,10,15), default=5)
+    pipe.add_argument("--feature-variant", choices=("baseline", "mtf_intraday", "mtf_full"), default="baseline",
+                      help="Contexte MTF DL causal; baseline conserve les features actuelles.")
+    pipe.add_argument("--progress", action="store_true", help="Afficher la progression des longs calculs.")
     pipe.add_argument("--dl-models", nargs="*", default=["MLP_12","MLP_24","TCN_12","TCN_24"])
     pipe.add_argument("--seeds", nargs="+", type=int, default=[42])
     pipe.add_argument("--epochs", type=int, default=20)
@@ -109,6 +112,9 @@ def main(argv=None):
     btdl.add_argument("--data", type=Path, required=True)
     btdl.add_argument("--symbol", required=True)
     btdl.add_argument("--timeframe", type=int, choices=(5,10,15), default=5)
+    btdl.add_argument("--feature-variant", choices=("baseline", "mtf_intraday", "mtf_full"), default="baseline",
+                      help="Contexte MTF DL causal; baseline conserve les features actuelles.")
+    btdl.add_argument("--progress", action="store_true", help="Afficher la progression des longs calculs.")
     btdl.add_argument("--models", nargs="+", default=["MLP_12","MLP_24","TCN_12","TCN_24"])
     btdl.add_argument("--seeds", nargs="+", type=int, default=[42])
     btdl.add_argument("--epochs", type=int, default=20)
@@ -190,6 +196,7 @@ def main(argv=None):
                 train_sessions=args.train_sessions, fold_sessions=args.fold_sessions,
                 start_date=args.start_date, end_date=args.end_date, max_folds=args.max_folds,
                 economic_validation_sessions=args.economic_validation_sessions,
+                feature_variant=args.feature_variant, progress=args.progress,
             )
         elif args.command == "backtest-dl":
             from .terminal_pipeline import run_terminal_pipeline
@@ -198,6 +205,7 @@ def main(argv=None):
                 dl_models=args.models, seeds=args.seeds, epochs=args.epochs, patience=args.patience,
                 config_path=args.config, dl_objective=args.dl_objective, max_folds=args.max_folds,
                 economic_validation_sessions=args.economic_validation_sessions,
+                feature_variant=args.feature_variant, progress=args.progress,
             )
     except (ValueError, FileNotFoundError, RuntimeError, ImportError, OSError) as exc:
         print(f"Erreur : {exc}", file=sys.stderr)

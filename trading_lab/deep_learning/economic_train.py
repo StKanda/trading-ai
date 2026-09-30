@@ -40,7 +40,7 @@ def _decode(raw, bundle, index):
 def train_economic(bundle, architecture="mlp", hidden_size=24, dropout=0.2,
                    learning_rate=1e-3, weight_decay=1e-4, batch_size=64,
                    max_epochs=30, patience=5, seed=42, checkpoint=None,
-                   x_test=None, test_index=None):
+                   x_test=None, test_index=None, progress_callback=None):
     _seed(seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     outputs = len(CLASS_TARGETS) + len(REG_TARGETS)
@@ -66,6 +66,8 @@ def train_economic(bundle, architecture="mlp", hidden_size=24, dropout=0.2,
     ncls = len(CLASS_TARGETS)
     best, best_epoch, wait = float("inf"), -1, 0
     best_state = copy.deepcopy(model.state_dict()); last_train = float("nan")
+    epochs_run = 0
+    early_stopped = False
     for epoch in range(int(max_epochs)):
         model.train(); losses=[]
         for xb,yc,yr in loader:
@@ -84,7 +86,14 @@ def train_economic(bundle, architecture="mlp", hidden_size=24, dropout=0.2,
             best,best_epoch,wait=vloss,epoch,0; best_state=copy.deepcopy(model.state_dict())
         else:
             wait += 1
-            if wait >= int(patience): break
+        epochs_run = epoch + 1
+        stopping = wait >= int(patience)
+        if progress_callback is not None:
+            progress_callback({"event": "epoch", "epoch": epochs_run, "max_epochs": int(max_epochs),
+                               "best_epoch": best_epoch + 1, "early_stopping": stopping})
+        if stopping:
+            early_stopped = True
+            break
     model.load_state_dict(best_state); model.eval()
     with torch.no_grad():
         rawv=model(xv).cpu().numpy()
@@ -102,5 +111,8 @@ def train_economic(bundle, architecture="mlp", hidden_size=24, dropout=0.2,
             "scaler_mean":bundle.scaler.mean_,"scaler_scale":bundle.scaler.scale_,
             "fill_values":bundle.fill_values.to_numpy(dtype=float),"pos_weight":pos_weight,
         },path); ckpt=str(path)
+    if progress_callback is not None:
+        progress_callback({"event": "finished", "epochs_run": epochs_run,
+                           "best_epoch": best_epoch + 1, "early_stopped": early_stopped})
     return EconomicTrainResult(best_epoch,last_train,best,ckpt,str(device),
                                sum(p.numel() for p in model.parameters()),valid_frame,test_frame,pos_weight)
